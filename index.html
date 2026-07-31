@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hex Pattern Analyzer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        body {
+            background: #0f1117;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            max-width: 1000px;
+            width: 100%;
+            background: #1a1d27;
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #2e3342;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+        }
+        h1 {
+            color: #e8edf5;
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        .subhead {
+            color: #8f98b0;
+            border-left: 3px solid #3d455c;
+            padding-left: 15px;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+        .upload-area {
+            background: #12161e;
+            border: 2px dashed #2f364b;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: 0.2s;
+        }
+        .upload-area:hover {
+            border-color: #5d6a8f;
+            background: #171d29;
+        }
+        .upload-text {
+            color: #b4bfd9;
+            font-size: 1.1rem;
+        }
+        .upload-hint {
+            color: #616b87;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .file-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #131823;
+            border-radius: 12px;
+            padding: 10px 20px;
+            margin: 10px 0 20px;
+            border: 1px solid #2b3142;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .file-name {
+            color: #c8d2e8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-badge {
+            background: #2b3349;
+            padding: 3px 15px;
+            border-radius: 30px;
+            color: #b7c2df;
+            font-size: 0.75rem;
+        }
+        .btn {
+            background: #2f3a58;
+            border: none;
+            color: white;
+            font-weight: 500;
+            padding: 10px 25px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: 1px solid #3f4a6b;
+            transition: 0.15s;
+        }
+        .btn-primary {
+            background: #4a5b88;
+            border-color: #6b7db0;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #5d70a5;
+            transform: scale(1.02);
+        }
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: transparent;
+            border-color: #404a68;
+            color: #b8c4e0;
+        }
+        .btn-outline:hover {
+            background: #252d42;
+        }
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+            align-items: center;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-top: 20px;
+            border-bottom: 1px solid #2b3142;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #7b88aa;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 2px solid transparent;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        .tab-btn:hover {
+            color: #b4bfd9;
+        }
+        .tab-btn.active {
+            color: #e4ecff;
+            border-bottom-color: #4a5b88;
+        }
+        .tab-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        .result-box {
+            background: #0e121b;
+            border-radius: 15px;
+            padding: 15px 20px;
+            border: 1px solid #2b3247;
+            margin-top: 15px;
+        }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .result-label {
+            color: #7b88aa;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .copy-btn {
+            background: transparent;
+            border: none;
+            color: #6b7db0;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .copy-btn:hover {
+            background: #1f2638;
+            color: #8a9dd0;
+        }
+        .copy-btn.copied {
+            color: #7ac97a;
+        }
+        .copy-icon {
+            font-size: 1.2rem;
+        }
+        .pattern-mask {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #e4ecff;
+            background: #0a0e16;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #242b3f;
+            max-height: 300px;
+            overflow-y: auto;
+            word-break: break-all;
+            white-space: pre-wrap;
+            position: relative;
+        }
+        .pattern-mask::-webkit-scrollbar {
+            width: 6px;
+        }
+        .pattern-mask::-webkit-scrollbar-track {
+            background: #0a0e16;
+        }
+        .pattern-mask::-webkit-scrollbar-thumb {
+            background: #2f3a58;
+            border-radius: 3px;
+        }
+        .pattern-mask::-webkit-scrollbar-thumb:hover {
+            background: #4a5b88;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            background: #131823;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #242b3f;
+        }
+        .stat-label {
+            color: #7b88aa;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            color: #d0dbf5;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        /* Offset Calculator Styles */
+        .offset-calculator {
+            background: #0e121b;
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #2b3247;
+        }
+        .offset-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            background: #131823;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #242b3f;
+        }
+        .input-group label {
+            color: #7b88aa;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            background: #0a0e16;
+            border: 1px solid #2b3142;
+            color: #e4ecff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #4a5b88;
+        }
+        .input-group input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Large textarea for custom pattern */
+        .input-group textarea {
+            background: #0a0e16;
+            border: 1px solid #2b3142;
+            color: #e4ecff;
+            padding: 10px 12px;
+            border-radius: 6px;
+            width: 100%;
+            min-height: 150px;
+            max-height: 300px;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #4a5b88;
+        }
+        .input-group textarea:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .input-group .helper-text {
+            color: #616b87;
+            font-size: 0.7rem;
+            margin-top: 4px;
+        }
+        .input-group .helper-text.highlight {
+            color: #7aadc9;
+        }
+        
+        /* Full width textarea container */
+        .input-group.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        /* Input with toggle */
+        .input-with-toggle {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .input-with-toggle input {
+            flex: 1;
+        }
+        .toggle-group {
+            display: flex;
+            background: #0a0e16;
+            border: 1px solid #2b3142;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .toggle-group button {
+            background: transparent;
+            border: none;
+            color: #7b88aa;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .toggle-group button:hover {
+            color: #b4bfd9;
+        }
+        .toggle-group button.active {
+            background: #4a5b88;
+            color: #e4ecff;
+        }
+        
+        .offset-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .offset-result {
+            background: #131823;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #242b3f;
+        }
+        .offset-result .label {
+            color: #7b88aa;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .offset-result .value {
+            color: #4a8bb0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            margin-top: 5px;
+        }
+        .offset-result .value.decimal {
+            color: #7ac97a;
+        }
+        .offset-result .formula {
+            color: #616b87;
+            font-size: 0.75rem;
+            margin-top: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        .warning {
+            color: #d6b07a;
+            background: #1f1f2a;
+            border-left: 4px solid #b68b4a;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .info {
+            color: #7aadc9;
+            background: #1a2633;
+            border-left: 4px solid #4a8bb0;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .success {
+            color: #7ac97a;
+            background: #1a2a1a;
+            border-left: 4px solid #4ab04a;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .footer {
+            margin-top: 25px;
+            color: #4b5679;
+            font-size: 0.8rem;
+            text-align: center;
+            border-top: 1px solid #232b3f;
+            padding-top: 15px;
+        }
+        .badge {
+            background: #1f283d;
+            border-radius: 30px;
+            padding: 2px 12px;
+            font-size: 0.7rem;
+            color: #a9b9e0;
+            border: 1px solid #323d5a;
+            display: inline-block;
+        }
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #6b7db0;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .spinner.active {
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a3349;
+            color: #e4ecff;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            border: 1px solid #4a5b88;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .pattern-length-display {
+            background: #0a0e16;
+            border: 1px solid #4a5b88;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            color: #7ac97a;
+            text-align: center;
+        }
+        .offset-info-message {
+            color: #7aadc9;
+            background: #1a2633;
+            border-left: 4px solid #4a8bb0;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>🧬 Hex Pattern Analyzer</h1>
+        <div class="subhead">
+            Upload <strong>.txt</strong> file &nbsp;·&nbsp; patterns end with <strong>A5 43</strong>
+            <span class="badge" style="margin-left: 10px;">last 2 bytes preserved</span>
+        </div>
+
+        <div class="upload-area" id="dropZone">
+            <div class="upload-text">📤 Drop your .txt file here or click to browse</div>
+            <div class="upload-hint">Patterns separated by blank lines · Hex bytes with spaces</div>
+            <input type="file" id="fileInput" accept=".txt">
+        </div>
+
+        <div class="file-status">
+            <span class="file-name" id="fileName">📄 No file selected</span>
+            <span class="file-badge" id="patternCount">0 patterns</span>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-primary" id="analyzeBtn" disabled>⚡ Generate Mask</button>
+            <button class="btn btn-outline" id="clearBtn">✕ Clear</button>
+            <span style="color:#5a6a8f; font-size:0.8rem; margin-left: auto;">Only 00 · FF · ?? allowed</span>
+            <span class="spinner" id="spinner"></span>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="pattern">Pattern</button>
+            <button class="tab-btn disabled" data-tab="offsets" id="offsetTab">Offset Calculator</button>
+        </div>
+
+        <!-- Tab 1: Pattern -->
+        <div class="tab-content active" id="tab-pattern">
+            <div id="resultContainer">
+                <div class="result-box" style="border-color: #1f253b; opacity: 0.6;">
+                    <div class="result-header">
+                        <span class="result-label">⬤ Generic Pattern</span>
+                        <span id="resultLength" style="color:#7b88aa; font-size:0.8rem;">—</span>
+                    </div>
+                    <div class="pattern-mask" id="maskDisplay" style="color:#6e7b9e;">Waiting for patterns…</div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:5px;">
+                        <button class="copy-btn" id="copyBtn" title="Copy pattern to clipboard" style="display:none;">
+                            <span class="copy-icon">📋</span> Copy
+                        </button>
+                    </div>
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-item">
+                            <div class="stat-label">Fixed Bytes</div>
+                            <div class="stat-value" id="fixedCount">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Wildcards</div>
+                            <div class="stat-value" id="wildcardCount">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Bytes</div>
+                            <div class="stat-value" id="totalBytes">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Last 2 Bytes</div>
+                            <div class="stat-value" id="lastTwoDisplay">—</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Patterns Used</div>
+                            <div class="stat-value" id="patternsUsed">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Skipped</div>
+                            <div class="stat-value" id="skippedCount">-</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="warningBox" class="warning" style="display: none;"></div>
+                <div id="infoBox" class="info" style="display: none;"></div>
+                <div id="successBox" class="success" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Offset Calculator -->
+        <div class="tab-content" id="tab-offsets">
+            <div class="offset-calculator">
+                <div class="offset-info-message" id="offsetInfoMessage">
+                    ✅ Generic Pattern loaded: <span id="genericLengthDisplay">0</span> bytes
+                </div>
+                
+                <div class="offset-inputs">
+                    <div class="input-group">
+                        <label>Base Value</label>
+                        <input type="number" id="baseValue" disabled>
+                        <div class="helper-text">Auto-calculated</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Read Offset Value</label>
+                        <div class="input-with-toggle">
+                            <input type="text" id="readOffset" value="0xB8">
+                            <div class="toggle-group" id="readToggle">
+                                <button data-value="dec">DEC</button>
+                                <button class="active" data-value="hex">HEX</button>
+                            </div>
+                        </div>
+                        <div class="helper-text" id="readOffsetDisplay">Hex: 0xB8</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Write Offset Value</label>
+                        <div class="input-with-toggle">
+                            <input type="text" id="writeOffset" value="0xB4">
+                            <div class="toggle-group" id="writeToggle">
+                                <button data-value="dec">DEC</button>
+                                <button class="active" data-value="hex">HEX</button>
+                            </div>
+                        </div>
+                        <div class="helper-text" id="writeOffsetDisplay">Hex: 0xB4</div>
+                    </div>
+                    
+                    <!-- Full width textarea for custom pattern -->
+                    <div class="input-group full-width">
+                        <label>Custom Pattern (paste hex bytes here)</label>
+                        <textarea id="customPattern" placeholder="FF FF 00 00 00 00 00 00 00 00 00 00 0A 43"></textarea>
+                        <div class="pattern-length-display" id="patternLengthDisplay">Pattern length: 0 bytes</div>
+                    </div>
+                </div>
+                
+                <div class="offset-results">
+                    <div class="offset-result">
+                        <div class="label">Read Offset (Hex)</div>
+                        <div class="value" id="readOffsetHex">—</div>
+                    </div>
+                    <div class="offset-result">
+                        <div class="label">Write Offset (Hex)</div>
+                        <div class="value" id="writeOffsetHex">—</div>
+                    </div>
+                    <div class="offset-result">
+                        <div class="label">Base Value (Decimal)</div>
+                        <div class="value decimal" id="baseValueDisplay">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Patterns starting with <strong>FF FF</strong> accepted · Others skipped
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast">✅ Copied to clipboard!</div>
+
+    <script>
+        (function() {
+            // DOM Elements
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileName = document.getElementById('fileName');
+            const patternCount = document.getElementById('patternCount');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const maskDisplay = document.getElementById('maskDisplay');
+            const resultLength = document.getElementById('resultLength');
+            const fixedCount = document.getElementById('fixedCount');
+            const wildcardCount = document.getElementById('wildcardCount');
+            const totalBytes = document.getElementById('totalBytes');
+            const lastTwoDisplay = document.getElementById('lastTwoDisplay');
+            const patternsUsed = document.getElementById('patternsUsed');
+            const skippedCount = document.getElementById('skippedCount');
+            const warningBox = document.getElementById('warningBox');
+            const infoBox = document.getElementById('infoBox');
+            const successBox = document.getElementById('successBox');
+            const spinner = document.getElementById('spinner');
+            const copyBtn = document.getElementById('copyBtn');
+            const toast = document.getElementById('toast');
+            const offsetTab = document.getElementById('offsetTab');
+            const genericLengthDisplay = document.getElementById('genericLengthDisplay');
+            const offsetInfoMessage = document.getElementById('offsetInfoMessage');
+            
+            // Offset elements
+            const baseValueInput = document.getElementById('baseValue');
+            const readOffsetInput = document.getElementById('readOffset');
+            const writeOffsetInput = document.getElementById('writeOffset');
+            const readOffsetHex = document.getElementById('readOffsetHex');
+            const writeOffsetHex = document.getElementById('writeOffsetHex');
+            const baseValueDisplay = document.getElementById('baseValueDisplay');
+            const customPattern = document.getElementById('customPattern');
+            const patternLengthDisplay = document.getElementById('patternLengthDisplay');
+            const readOffsetDisplay = document.getElementById('readOffsetDisplay');
+            const writeOffsetDisplay = document.getElementById('writeOffsetDisplay');
+            
+            // Toggle buttons
+            const readToggleBtns = document.querySelectorAll('#readToggle button');
+            const writeToggleBtns = document.querySelectorAll('#writeToggle button');
+            
+            // State for toggle modes
+            let readMode = 'hex';
+            let writeMode = 'hex';
+
+            // Tab elements
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            // State
+            let patterns = [];
+            let skippedPatterns = 0;
+            let fileLoaded = false;
+            let filename = '';
+            let currentPattern = '';
+            let totalPatternLength = 0;
+            let hasGenericPattern = false;
+
+            // Tab switching
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (this.classList.contains('disabled')) return;
+                    
+                    const tabName = this.dataset.tab;
+                    
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    document.getElementById('tab-' + tabName).classList.add('active');
+                });
+            });
+
+            // Read toggle buttons
+            readToggleBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    readToggleBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    readMode = this.dataset.value;
+                    
+                    if (readMode === 'hex') {
+                        readOffsetInput.placeholder = '0x...';
+                        const val = parseInt(readOffsetInput.value);
+                        if (!isNaN(val) && val >= 0) {
+                            readOffsetInput.value = '0x' + val.toString(16).toUpperCase();
+                        }
+                    } else {
+                        readOffsetInput.placeholder = '184';
+                        let val = readOffsetInput.value.trim();
+                        if (val.startsWith('0x')) {
+                            val = parseInt(val, 16);
+                            if (!isNaN(val)) {
+                                readOffsetInput.value = val;
+                            }
+                        }
+                    }
+                    calculateOffsets();
+                });
+            });
+
+            // Write toggle buttons
+            writeToggleBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    writeToggleBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    writeMode = this.dataset.value;
+                    
+                    if (writeMode === 'hex') {
+                        writeOffsetInput.placeholder = '0x...';
+                        const val = parseInt(writeOffsetInput.value);
+                        if (!isNaN(val) && val >= 0) {
+                            writeOffsetInput.value = '0x' + val.toString(16).toUpperCase();
+                        }
+                    } else {
+                        writeOffsetInput.placeholder = '180';
+                        let val = writeOffsetInput.value.trim();
+                        if (val.startsWith('0x')) {
+                            val = parseInt(val, 16);
+                            if (!isNaN(val)) {
+                                writeOffsetInput.value = val;
+                            }
+                        }
+                    }
+                    calculateOffsets();
+                });
+            });
+
+            // Custom pattern input listener
+            customPattern.addEventListener('input', function() {
+                calculateOffsets();
+            });
+
+            // Read/Write offset input listeners
+            readOffsetInput.addEventListener('input', function() {
+                let val = readOffsetInput.value.trim();
+                if (val.startsWith('0x')) {
+                    const dec = parseInt(val, 16);
+                    if (!isNaN(dec)) {
+                        readOffsetDisplay.textContent = 'Hex: ' + val.toUpperCase();
+                    } else {
+                        readOffsetDisplay.textContent = 'Invalid hex';
+                    }
+                } else {
+                    const num = parseInt(val);
+                    if (!isNaN(num) && num >= 0) {
+                        readOffsetDisplay.textContent = 'Decimal: ' + num;
+                    } else {
+                        readOffsetDisplay.textContent = 'Invalid decimal';
+                    }
+                }
+                calculateOffsets();
+            });
+            
+            writeOffsetInput.addEventListener('input', function() {
+                let val = writeOffsetInput.value.trim();
+                if (val.startsWith('0x')) {
+                    const dec = parseInt(val, 16);
+                    if (!isNaN(dec)) {
+                        writeOffsetDisplay.textContent = 'Hex: ' + val.toUpperCase();
+                    } else {
+                        writeOffsetDisplay.textContent = 'Invalid hex';
+                    }
+                } else {
+                    const num = parseInt(val);
+                    if (!isNaN(num) && num >= 0) {
+                        writeOffsetDisplay.textContent = 'Decimal: ' + num;
+                    } else {
+                        writeOffsetDisplay.textContent = 'Invalid decimal';
+                    }
+                }
+                calculateOffsets();
+            });
+
+            function getValueFromInput(input, mode) {
+                let val = input.value.trim();
+                if (mode === 'hex') {
+                    if (val.startsWith('0x')) {
+                        val = val.substring(2);
+                    }
+                    return parseInt(val, 16);
+                } else {
+                    return parseInt(val);
+                }
+            }
+
+            // Function to count bytes including ?? wildcards
+            function countBytesInPattern(text) {
+                if (!text || !text.trim()) return 0;
+                
+                const parts = text.trim().split(/\s+/);
+                let count = 0;
+                
+                for (let part of parts) {
+                    if (part === '??' || (part.length === 2 && /^[0-9A-Fa-f]{2}$/.test(part))) {
+                        count++;
+                    }
+                    else if (part.length > 2 && /^[0-9A-Fa-f]+$/.test(part)) {
+                        for (let i = 0; i < part.length; i += 2) {
+                            if (i + 1 < part.length) {
+                                count++;
+                            }
+                        }
+                    }
+                }
+                
+                return count;
+            }
+
+            function toHexStr(num) {
+                return '0x' + num.toString(16).toUpperCase();
+            }
+
+            function calculateOffsets() {
+                const text = customPattern.value;
+                const readVal = getValueFromInput(readOffsetInput, readMode);
+                const writeVal = getValueFromInput(writeOffsetInput, writeMode);
+                const genericLen = totalPatternLength || 0;
+                
+                if (!text || !text.trim()) {
+                    patternLengthDisplay.textContent = 'Pattern length: 0 bytes';
+                    baseValueInput.value = '';
+                    baseValueDisplay.textContent = '—';
+                    readOffsetHex.textContent = '—';
+                    writeOffsetHex.textContent = '—';
+                    return;
+                }
+                
+                // Count all bytes including ?? wildcards
+                const length = countBytesInPattern(text);
+                patternLengthDisplay.textContent = `Pattern length: ${length} bytes`;
+                
+                if (length > 0 && !isNaN(readVal) && !isNaN(writeVal) && genericLen > 0) {
+                    // Use the full pattern length as subtract value
+                    const subtractVal = length;
+                    
+                    // Use the GENERIC PATTERN LENGTH from Tab 1 for base calculation
+                    const base = genericLen - subtractVal;
+                    baseValueInput.value = base;
+                    baseValueDisplay.textContent = base;
+                    
+                    // Calculate read offset (ADDITION) - NO PADDING
+                    const readOffset = base + readVal;
+                    const readOffsetHexStr = toHexStr(readOffset);
+                    readOffsetHex.textContent = readOffsetHexStr;
+
+                    // Calculate write offset (ADDITION) - NO PADDING
+                    const writeOffset = base + writeVal;
+                    const writeOffsetHexStr = toHexStr(writeOffset);
+                    writeOffsetHex.textContent = writeOffsetHexStr;
+                }
+            }
+
+            function clearResults() {
+                maskDisplay.textContent = 'Waiting for patterns…';
+                maskDisplay.style.color = '#6e7b9e';
+                resultLength.textContent = '—';
+                fixedCount.textContent = '-';
+                wildcardCount.textContent = '-';
+                totalBytes.textContent = '-';
+                lastTwoDisplay.textContent = '—';
+                patternsUsed.textContent = '-';
+                skippedCount.textContent = '-';
+                warningBox.style.display = 'none';
+                infoBox.style.display = 'none';
+                successBox.style.display = 'none';
+                copyBtn.style.display = 'none';
+                currentPattern = '';
+                totalPatternLength = 0;
+                hasGenericPattern = false;
+                
+                // Disable Offset Calculator tab
+                offsetTab.classList.add('disabled');
+                if (offsetTab.classList.contains('active')) {
+                    offsetTab.classList.remove('active');
+                    document.querySelector('.tab-btn[data-tab="pattern"]').classList.add('active');
+                    document.getElementById('tab-pattern').classList.add('active');
+                    document.getElementById('tab-offsets').classList.remove('active');
+                }
+                
+                // Reset offset fields
+                baseValueInput.value = '';
+                baseValueDisplay.textContent = '—';
+                readOffsetHex.textContent = '—';
+                writeOffsetHex.textContent = '—';
+                patternLengthDisplay.textContent = 'Pattern length: 0 bytes';
+                readOffsetDisplay.textContent = 'Hex: 0xB8';
+                writeOffsetDisplay.textContent = 'Hex: 0xB4';
+                genericLengthDisplay.textContent = '0';
+                offsetInfoMessage.style.display = 'block';
+                offsetInfoMessage.innerHTML = '✅ Generic Pattern loaded: <span id="genericLengthDisplay">0</span> bytes';
+            }
+
+            function updateStatus() {
+                fileName.textContent = filename ? `📄 ${filename}` : '📄 No file selected';
+                patternCount.textContent = patterns.length + ' patterns';
+                analyzeBtn.disabled = patterns.length < 2;
+            }
+
+            function extractPatternsFromText(text) {
+                let blocks = text.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+
+                if (blocks.length < 2) {
+                    const matches = text.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
+                    if (matches && matches.length >= 2) {
+                        blocks = matches;
+                    }
+                }
+
+                if (blocks.length < 2) {
+                    const matches = text.match(/(FF FF[0-9A-Fa-f ]+)/g);
+                    if (matches && matches.length >= 2) {
+                        blocks = matches;
+                    }
+                }
+
+                const rawPatterns = blocks
+                    .map(b => b.replace(/\s+/g, ' ').trim())
+                    .filter(p => p.length > 0);
+
+                const validPatterns = [];
+                let skipped = 0;
+
+                for (let p of rawPatterns) {
+                    const bytes = p.split(' ').filter(b => b.length === 2);
+                    if (bytes.length < 4) continue;
+
+                    if (bytes[0] === 'FF' && bytes[1] === 'FF') {
+                        validPatterns.push(p);
+                    } else {
+                        skipped++;
+                    }
+                }
+
+                return { valid: validPatterns, skipped: skipped };
+            }
+
+            function analyzePatterns(patterns) {
+                if (!patterns || patterns.length < 2) {
+                    return null;
+                }
+
+                const bytePatterns = [];
+                for (let p of patterns) {
+                    const bytes = p.split(' ').filter(b => b.length === 2);
+                    if (bytes.length > 0) {
+                        bytePatterns.push(bytes);
+                    }
+                }
+
+                if (bytePatterns.length < 2) return null;
+
+                const minLen = Math.min(...bytePatterns.map(bp => bp.length));
+                const trimmed = bytePatterns.map(bp => bp.slice(0, minLen));
+
+                const generic = [];
+                for (let i = 0; i < minLen; i++) {
+                    const first = trimmed[0][i];
+                    let allSame = true;
+                    for (let j = 1; j < trimmed.length; j++) {
+                        if (trimmed[j][i] !== first) {
+                            allSame = false;
+                            break;
+                        }
+                    }
+                    generic.push(allSame ? first : '??');
+                }
+
+                const lastTwoStart = Math.max(0, generic.length - 2);
+                const allowedSet = new Set(['00', 'FF', '??']);
+
+                for (let i = 0; i < generic.length; i++) {
+                    if (i >= lastTwoStart) continue;
+                    if (!allowedSet.has(generic[i])) {
+                        generic[i] = '??';
+                    }
+                }
+
+                const maskStr = generic.join(' ');
+                const wildcardCount = maskStr.split('??').length - 1;
+                const total = generic.length;
+                const fixed = total - wildcardCount;
+
+                let lastTwo = '—';
+                if (total >= 2) {
+                    lastTwo = generic.slice(-2).join(' ');
+                }
+
+                return {
+                    mask: maskStr,
+                    total,
+                    fixed,
+                    wildcard: wildcardCount,
+                    lastTwo,
+                    patternsUsed: patterns.length
+                };
+            }
+
+            function showToast(message) {
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }
+
+            function copyToClipboard(text) {
+                if (!text || text === 'Waiting for patterns…') {
+                    showToast('⚠️ Nothing to copy');
+                    return;
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => {
+                            showToast('✅ Copied to clipboard!');
+                            copyBtn.classList.add('copied');
+                            setTimeout(() => copyBtn.classList.remove('copied'), 2000);
+                        })
+                        .catch(() => {
+                            fallbackCopy(text);
+                        });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('✅ Copied to clipboard!');
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => copyBtn.classList.remove('copied'), 2000);
+                } catch (err) {
+                    showToast('⚠️ Failed to copy');
+                }
+                document.body.removeChild(textarea);
+            }
+
+            function processFile(file) {
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const text = e.target.result;
+                        filename = file.name;
+
+                        const result = extractPatternsFromText(text);
+
+                        if (result.valid.length === 0) {
+                            alert('No valid patterns found. Patterns must start with "FF FF".');
+                            return;
+                        }
+
+                        patterns = result.valid;
+                        skippedPatterns = result.skipped;
+                        fileLoaded = true;
+
+                        if (skippedPatterns > 0) {
+                            infoBox.textContent = `ℹ️ ${skippedPatterns} pattern(s) skipped (did not start with FF FF). Using ${patterns.length} valid pattern(s).`;
+                            infoBox.style.display = 'block';
+                        } else {
+                            infoBox.style.display = 'none';
+                        }
+
+                        warningBox.style.display = 'none';
+                        successBox.style.display = 'none';
+                        updateStatus();
+                        clearResults();
+
+                        setTimeout(runAnalysis, 100);
+
+                    } catch (err) {
+                        alert('Error processing file: ' + err.message);
+                    }
+                };
+
+                reader.onerror = function() {
+                    alert('Error reading file.');
+                };
+
+                reader.readAsText(file);
+            }
+
+            function runAnalysis() {
+                if (patterns.length < 2) {
+                    alert('Need at least 2 valid patterns.');
+                    return;
+                }
+
+                spinner.classList.add('active');
+
+                setTimeout(() => {
+                    try {
+                        const result = analyzePatterns(patterns);
+
+                        if (!result) {
+                            maskDisplay.textContent = '⚠️ Analysis failed';
+                            maskDisplay.style.color = '#d9b48f';
+                            return;
+                        }
+
+                        currentPattern = result.mask;
+                        totalPatternLength = result.total;
+                        hasGenericPattern = true;
+                        
+                        maskDisplay.textContent = result.mask;
+                        maskDisplay.style.color = '#e4ecff';
+                        resultLength.textContent = result.total + ' bytes';
+                        fixedCount.textContent = result.fixed;
+                        wildcardCount.textContent = result.wildcard;
+                        totalBytes.textContent = result.total;
+                        lastTwoDisplay.textContent = result.lastTwo || '—';
+                        patternsUsed.textContent = result.patternsUsed;
+                        skippedCount.textContent = skippedPatterns;
+
+                        copyBtn.style.display = 'flex';
+
+                        successBox.textContent = `✅ Analysis complete! Generated pattern from ${result.patternsUsed} patterns.`;
+                        successBox.style.display = 'block';
+
+                        // Enable Offset Calculator tab
+                        offsetTab.classList.remove('disabled');
+                        genericLengthDisplay.textContent = result.total;
+                        offsetInfoMessage.style.display = 'block';
+                        offsetInfoMessage.innerHTML = `✅ Generic Pattern loaded: <span style="color:#7ac97a;font-weight:600;">${result.total}</span> bytes`;
+
+                        // Recalculate offsets with new generic length
+                        calculateOffsets();
+
+                    } catch (err) {
+                        alert('Error during analysis: ' + err.message);
+                    } finally {
+                        spinner.classList.remove('active');
+                    }
+                }, 100);
+            }
+
+            function resetAll() {
+                patterns = [];
+                skippedPatterns = 0;
+                fileLoaded = false;
+                filename = '';
+                fileInput.value = '';
+                currentPattern = '';
+                totalPatternLength = 0;
+                hasGenericPattern = false;
+                updateStatus();
+                clearResults();
+                warningBox.style.display = 'none';
+                infoBox.style.display = 'none';
+                successBox.style.display = 'none';
+                maskDisplay.textContent = 'Waiting for patterns…';
+                maskDisplay.style.color = '#6e7b9e';
+                spinner.classList.remove('active');
+                copyBtn.style.display = 'none';
+                
+                // Reset offset inputs
+                readOffsetInput.value = '0xB8';
+                writeOffsetInput.value = '0xB4';
+                customPattern.value = '';
+                patternLengthDisplay.textContent = 'Pattern length: 0 bytes';
+                readOffsetDisplay.textContent = 'Hex: 0xB8';
+                writeOffsetDisplay.textContent = 'Hex: 0xB4';
+                genericLengthDisplay.textContent = '0';
+                offsetInfoMessage.style.display = 'block';
+                offsetInfoMessage.innerHTML = '✅ Generic Pattern loaded: <span id="genericLengthDisplay">0</span> bytes';
+                
+                // Reset toggles to HEX
+                readToggleBtns.forEach(b => b.classList.remove('active'));
+                document.querySelector('#readToggle button[data-value="hex"]').classList.add('active');
+                writeToggleBtns.forEach(b => b.classList.remove('active'));
+                document.querySelector('#writeToggle button[data-value="hex"]').classList.add('active');
+                readMode = 'hex';
+                writeMode = 'hex';
+            }
+
+            // Event Listeners
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    processFile(e.target.files[0]);
+                }
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = '#7a8bc7';
+                dropZone.style.background = '#1f2638';
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.style.borderColor = '#2f364b';
+                dropZone.style.background = '#12161e';
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = '#2f364b';
+                dropZone.style.background = '#12161e';
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                        processFile(file);
+                    } else {
+                        alert('Please upload a .txt file.');
+                    }
+                }
+            });
+
+            analyzeBtn.addEventListener('click', runAnalysis);
+            clearBtn.addEventListener('click', resetAll);
+
+            // Copy button
+            copyBtn.addEventListener('click', function() {
+                copyToClipboard(currentPattern);
+            });
+
+            // Initial state
+            resetAll();
+        })();
+    </script>
+
+</body>
+</html>
