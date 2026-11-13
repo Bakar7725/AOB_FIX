@@ -967,35 +967,47 @@
             }
 
            function extractPatternsFromText(text) {
-    let blocks = text.split(/\n\s*\n/).filter(b => b.trim().length > 0);
-
-    if (blocks.length < 2) {
-        const matches = text.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
-        if (matches && matches.length >= 2) {
-            blocks = matches;
-        }
+    // Step 1: FF FF ka pehla position dhoondo
+    const ffIdx = text.indexOf('FF FF');
+    if (ffIdx === -1) {
+        return { valid: [], skipped: 0 };
     }
 
+    // Step 2: FF FF se pehle ka sab kuch hatao
+    let workingText = text.substring(ffIdx);
+
+    // Step 3: Ab is text ko blocks mein todo
+    let blocks = workingText.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+
+    // Step 4: Agar sirf 1 block hai, toh A5 43 tak ka match karo
     if (blocks.length < 2) {
-        // FALLBACK: FF FF se A5 43 tak (inclusive) match karo
-        const matches = text.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
+        const matches = workingText.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
         if (matches && matches.length >= 1) {
             blocks = matches;
         }
     }
 
+    // Step 5: Ab har block ko clean karo:
+    //   - FF FF se pehle ka hatao
+    //   - A5 43 ke baad ka hatao
     const rawPatterns = blocks
         .map(b => b.replace(/\s+/g, ' ').trim())
-        // ✅ NAYA: A5 43 ke baad ka sab kuch strip karo
         .map(b => {
-            const idx = b.indexOf('A5 43');
-            if (idx !== -1) {
-                return b.substring(0, idx + 5); // 'A5 43' = 5 chars
+            // FF FF se pehle ka hatao (agar abhi bhi hai)
+            const startIdx = b.indexOf('FF FF');
+            if (startIdx !== -1) {
+                b = b.substring(startIdx);
+            }
+            // A5 43 ke baad ka hatao
+            const endIdx = b.indexOf('A5 43');
+            if (endIdx !== -1) {
+                b = b.substring(0, endIdx + 5); // 'A5 43' = 5 chars
             }
             return b;
         })
         .filter(p => p.length > 0);
 
+    // Step 6: Validation — sirf FF FF se shuru hone wale
     const validPatterns = [];
     let skipped = 0;
 
@@ -1011,8 +1023,7 @@
     }
 
     return { valid: validPatterns, skipped: skipped };
-}
-
+} 
             function analyzePatterns(patterns) {
                 if (!patterns || patterns.length < 2) {
                     return null;
