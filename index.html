@@ -966,125 +966,130 @@
                 analyzeBtn.disabled = patterns.length < 2;
             }
 
-           function extractPatternsFromText(text) {
-    // Step 1: FF FF ka pehla position dhoondo
-    const ffIdx = text.indexOf('FF FF');
-    if (ffIdx === -1) {
-        return { valid: [], skipped: 0 };
+           
+            function extractPatternsFromText(text) {
+    // Normalize whitespace
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+
+    // Step 1: Har "FF FF ... A5 43" occurrence extract karo (global, greedy)
+    // 'FF FF' se shuru, 'A5 43' par khatam (inclusive)
+    const patternRegex = /FF FF(?:[0-9A-Fa-f]{2}|[0-9A-Fa-f]{2}\s+)*?A5 43/g;
+
+    // Better: line-by-line ya segment-by-segment process karo
+    const segments = [];
+    let searchStart = 0;
+    while (searchStart < cleanText.length) {
+        // 'FF FF' dhoondo
+        const ffIdx = cleanText.indexOf('FF FF', searchStart);
+        if (ffIdx === -1) break;
+
+        // 'A5 43' dhoondo (ffIdx ke baad)
+        const a5Idx = cleanText.indexOf('A5 43', ffIdx + 5);
+        if (a5Idx === -1) break;
+
+        // Extract 'FF FF ... A5 43'
+        const extracted = cleanText.substring(ffIdx, a5Idx + 5);
+        segments.push(extracted);
+
+        // Next search 'A5 43' ke baad se shuru
+        searchStart = a5Idx + 5;
     }
 
-    // Step 2: FF FF se pehle ka sab kuch hatao
-    let workingText = text.substring(ffIdx);
-
-    // Step 3: Ab is text ko blocks mein todo
-    let blocks = workingText.split(/\n\s*\n/).filter(b => b.trim().length > 0);
-
-    // Step 4: Agar sirf 1 block hai, toh A5 43 tak ka match karo
-    if (blocks.length < 2) {
-        const matches = workingText.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
-        if (matches && matches.length >= 1) {
-            blocks = matches;
-        }
-    }
-
-    // Step 5: Ab har block ko clean karo:
-    //   - FF FF se pehle ka hatao
-    //   - A5 43 ke baad ka hatao
-    const rawPatterns = blocks
-        .map(b => b.replace(/\s+/g, ' ').trim())
-        .map(b => {
-            // FF FF se pehle ka hatao (agar abhi bhi hai)
-            const startIdx = b.indexOf('FF FF');
-            if (startIdx !== -1) {
-                b = b.substring(startIdx);
-            }
-            // A5 43 ke baad ka hatao
-            const endIdx = b.indexOf('A5 43');
-            if (endIdx !== -1) {
-                b = b.substring(0, endIdx + 5); // 'A5 43' = 5 chars
-            }
-            return b;
-        })
-        .filter(p => p.length > 0);
-
-    // Step 6: Validation — sirf FF FF se shuru hone wale
+    // Step 2: Validation + cleanup
     const validPatterns = [];
     let skipped = 0;
 
-    for (let p of rawPatterns) {
-        const bytes = p.split(' ').filter(b => b.length === 2);
+    for (let seg of segments) {
+        const bytes = seg.split(' ').filter(b => b.length === 2);
         if (bytes.length < 4) continue;
 
+        // FF FF check (already guaranteed, but double-check)
         if (bytes[0] === 'FF' && bytes[1] === 'FF') {
-            validPatterns.push(p);
+            // Verify 'A5 43' at end
+            const lastTwo = bytes.slice(-2).join(' ');
+            if (lastTwo === 'A5 43') {
+                validPatterns.push(bytes.join(' '));
+            } else {
+                skipped++;
+            }
         } else {
             skipped++;
         }
     }
 
     return { valid: validPatterns, skipped: skipped };
-} 
+}
+
             function analyzePatterns(patterns) {
-                if (!patterns || patterns.length < 2) {
-                    return null;
-                }
+    if (!patterns || patterns.length < 2) {
+        return null;
+    }
 
-                const bytePatterns = [];
-                for (let p of patterns) {
-                    const bytes = p.split(' ').filter(b => b.length === 2);
-                    if (bytes.length > 0) {
-                        bytePatterns.push(bytes);
-                    }
-                }
+    const bytePatterns = [];
+    for (let p of patterns) {
+        const bytes = p.split(' ').filter(b => b.length === 2);
+        if (bytes.length > 0) {
+            bytePatterns.push(bytes);
+        }
+    }
 
-                if (bytePatterns.length < 2) return null;
+    if (bytePatterns.length < 2) return null;
 
-                const minLen = Math.min(...bytePatterns.map(bp => bp.length));
-                const trimmed = bytePatterns.map(bp => bp.slice(0, minLen));
+    // ✅ maxLen use karo — sabse lambe pattern ki length
+    const maxLen = Math.max(...bytePatterns.map(bp => bp.length));
 
-                const generic = [];
-                for (let i = 0; i < minLen; i++) {
-                    const first = trimmed[0][i];
-                    let allSame = true;
-                    for (let j = 1; j < trimmed.length; j++) {
-                        if (trimmed[j][i] !== first) {
-                            allSame = false;
-                            break;
-                        }
-                    }
-                    generic.push(allSame ? first : '??');
-                }
+    // ✅ Shorter patterns ko '??' se pad karo
+    const padded = bytePatterns.map(bp => {
+        const copy = bp.slice();
+        while (copy.length < maxLen) {
+            copy.push('??');  // pad with wildcard
+        }
+        return copy;
+    });
 
-                const lastTwoStart = Math.max(0, generic.length - 2);
-                const allowedSet = new Set(['00', 'FF', '??']);
-
-                for (let i = 0; i < generic.length; i++) {
-                    if (i >= lastTwoStart) continue;
-                    if (!allowedSet.has(generic[i])) {
-                        generic[i] = '??';
-                    }
-                }
-
-                const maskStr = generic.join(' ');
-                const wildcardCount = maskStr.split('??').length - 1;
-                const total = generic.length;
-                const fixed = total - wildcardCount;
-
-                let lastTwo = '—';
-                if (total >= 2) {
-                    lastTwo = generic.slice(-2).join(' ');
-                }
-
-                return {
-                    mask: maskStr,
-                    total,
-                    fixed,
-                    wildcard: wildcardCount,
-                    lastTwo,
-                    patternsUsed: patterns.length
-                };
+    const generic = [];
+    for (let i = 0; i < maxLen; i++) {
+        const first = padded[0][i];
+        let allSame = true;
+        for (let j = 1; j < padded.length; j++) {
+            if (padded[j][i] !== first) {
+                allSame = false;
+                break;
             }
+        }
+        // Agar koi bhi '??' hai us position par, toh result bhi '??'
+        generic.push(allSame ? first : '??');
+    }
 
+    const lastTwoStart = Math.max(0, generic.length - 2);
+    const allowedSet = new Set(['00', 'FF', '??']);
+
+    for (let i = 0; i < generic.length; i++) {
+        if (i >= lastTwoStart) continue;
+        if (!allowedSet.has(generic[i])) {
+            generic[i] = '??';
+        }
+    }
+
+    const maskStr = generic.join(' ');
+    const wildcardCount = maskStr.split('??').length - 1;
+    const total = generic.length;
+    const fixed = total - wildcardCount;
+
+    let lastTwo = '—';
+    if (total >= 2) {
+        lastTwo = generic.slice(-2).join(' ');
+    }
+
+    return {
+        mask: maskStr,
+        total,
+        fixed,
+        wildcard: wildcardCount,
+        lastTwo,
+        patternsUsed: patterns.length
+    };
+}
             function showToast(message) {
                 toast.textContent = message;
                 toast.classList.add('show');
