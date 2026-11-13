@@ -966,43 +966,52 @@
                 analyzeBtn.disabled = patterns.length < 2;
             }
 
-            function extractPatternsFromText(text) {
-                let blocks = text.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+           function extractPatternsFromText(text) {
+    let blocks = text.split(/\n\s*\n/).filter(b => b.trim().length > 0);
 
-                if (blocks.length < 2) {
-                    const matches = text.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
-                    if (matches && matches.length >= 2) {
-                        blocks = matches;
-                    }
-                }
+    if (blocks.length < 2) {
+        const matches = text.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
+        if (matches && matches.length >= 2) {
+            blocks = matches;
+        }
+    }
 
-                if (blocks.length < 2) {
-                    const matches = text.match(/(FF FF[0-9A-Fa-f ]+)/g);
-                    if (matches && matches.length >= 2) {
-                        blocks = matches;
-                    }
-                }
+    if (blocks.length < 2) {
+        // FALLBACK: FF FF se A5 43 tak (inclusive) match karo
+        const matches = text.match(/(FF FF[0-9A-Fa-f ]*?A5 43)/g);
+        if (matches && matches.length >= 1) {
+            blocks = matches;
+        }
+    }
 
-                const rawPatterns = blocks
-                    .map(b => b.replace(/\s+/g, ' ').trim())
-                    .filter(p => p.length > 0);
-
-                const validPatterns = [];
-                let skipped = 0;
-
-                for (let p of rawPatterns) {
-                    const bytes = p.split(' ').filter(b => b.length === 2);
-                    if (bytes.length < 4) continue;
-
-                    if (bytes[0] === 'FF' && bytes[1] === 'FF') {
-                        validPatterns.push(p);
-                    } else {
-                        skipped++;
-                    }
-                }
-
-                return { valid: validPatterns, skipped: skipped };
+    const rawPatterns = blocks
+        .map(b => b.replace(/\s+/g, ' ').trim())
+        // ✅ NAYA: A5 43 ke baad ka sab kuch strip karo
+        .map(b => {
+            const idx = b.indexOf('A5 43');
+            if (idx !== -1) {
+                return b.substring(0, idx + 5); // 'A5 43' = 5 chars
             }
+            return b;
+        })
+        .filter(p => p.length > 0);
+
+    const validPatterns = [];
+    let skipped = 0;
+
+    for (let p of rawPatterns) {
+        const bytes = p.split(' ').filter(b => b.length === 2);
+        if (bytes.length < 4) continue;
+
+        if (bytes[0] === 'FF' && bytes[1] === 'FF') {
+            validPatterns.push(p);
+        } else {
+            skipped++;
+        }
+    }
+
+    return { valid: validPatterns, skipped: skipped };
+}
 
             function analyzePatterns(patterns) {
                 if (!patterns || patterns.length < 2) {
