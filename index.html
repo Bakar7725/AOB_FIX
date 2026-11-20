@@ -2,1329 +2,689 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hex Pattern Analyzer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Offset Extractor — COW Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, sans-serif;
+        :root {
+            --bg-base: #060608; --bg-panel: #0c0c0f; --bg-card: #121216; --bg-card-hover: #1a1a20;
+            --red-primary: #ff2d55; --red-hover: #e62046; --red-dark: #b30021; --red-glow: rgba(255, 45, 85, 0.6);
+            --text-main: #f0f0f5; --text-muted: #808088; --border-color: #222228;
+            --font-sans: 'Inter', sans-serif; --font-ui: 'Rajdhani', sans-serif; --font-mono: 'JetBrains Mono', monospace;
         }
-        body {
-            background: #0f1117;
-            min-height: 100vh;
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { height: 100vh; width: 100vw; overflow: hidden; background: var(--bg-base); color: var(--text-main); font-family: var(--font-sans); }
+        .app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; width: 100vw; }
+        .sidebar { background: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 24px; overflow-y: hidden; }
+        .main-panel { padding: 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: hidden; background: var(--bg-base); }
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-shrink: 0; }
+        .brand-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--red-primary), var(--red-dark)); border-radius: 10px; display: grid; place-items: center; color: white; box-shadow: 0 4px 15px rgba(255, 45, 85, 0.3); }
+        .brand-icon svg { width: 22px; height: 22px; fill: currentColor; }
+        .brand-text h1 { font-family: var(--font-ui); font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: 0.5px; }
+        .brand-text h1 span { color: var(--red-primary); }
+        .brand-text p { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+        
+        .upload-box-container { margin-bottom: 16px; flex-shrink: 0; }
+        .upload-scanner { border: 1px dashed var(--border-color); border-radius: 12px; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(255, 255, 255, 0.02); }
+        .upload-scanner:hover { border-color: var(--red-primary); background: rgba(255, 45, 85, 0.05); }
+        .radar-wrap { position: relative; width: 50px; height: 50px; margin-bottom: 12px; display: grid; place-items: center; }
+        .radar-ring { position: absolute; inset: 0; border: 2px solid var(--red-primary); border-radius: 50%; opacity: 0.3; }
+        .radar-ring:nth-child(2) { inset: 10px; border-color: var(--red-hover); opacity: 0.1; animation: pulse 2s infinite; }
+        .radar-sweep { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 45, 85, 0.4) 30deg, transparent 90deg); animation: sweep 3s linear infinite; }
+        @keyframes sweep { 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .radar-icon { position: relative; z-index: 1; color: var(--red-primary); filter: drop-shadow(0 0 8px var(--red-glow)); }
+        .radar-icon svg { width: 20px; height: 20px; }
+        .upload-scanner h3 { font-family: var(--font-ui); font-size: 14px; margin-bottom: 4px; }
+        .upload-scanner h3 span { color: var(--red-primary); }
+        .upload-scanner p { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+        #fileInput { display: none; }
+        
+        .file-list { display: flex; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; padding-right: 4px; }
+        .file-item { display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.2s; position: relative; flex-shrink: 0; }
+        .file-item:hover { border-color: #333; background: var(--bg-card-hover); }
+        .file-item.active { border-color: var(--red-primary); background: rgba(255, 45, 85, 0.08); box-shadow: 0 0 10px rgba(255, 45, 85, 0.1); }
+        .file-item .file-icon { color: var(--red-primary); display: grid; place-items: center; flex-shrink: 0; }
+        .file-item .file-details { flex: 1; overflow: hidden; text-align: left; }
+        .file-item .file-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+        .file-item .file-size { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
+        .file-item .status-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; box-shadow: 0 0 5px #00e676; margin-right: 4px; flex-shrink: 0;}
+
+        .status-bar { display: none; padding: 12px 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; font-family: var(--font-mono); font-size: 12px; }
+        .status-bar.show { display: block; }
+        .status-bar.success { color: #00e676; border-color: rgba(0, 230, 118, 0.4); }
+        .status-bar.error { color: var(--red-primary); border-color: rgba(255, 45, 85, 0.4); }
+
+        /* NEW WEB TOOL BUTTON */
+        .web-tool-btn {
+            margin-top: auto;
             display: flex;
+            align-items: center;
             justify-content: center;
-            align-items: center;
-            margin: 0;
-            padding: 20px;
-        }
-        .card {
-            max-width: 1000px;
-            width: 100%;
-            background: #1a1d27;
-            border-radius: 20px;
-            padding: 30px;
-            border: 1px solid #2e3342;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
-        }
-        h1 {
-            color: #e8edf5;
-            font-weight: 500;
-            margin-top: 0;
-            margin-bottom: 5px;
-        }
-        .subhead {
-            color: #8f98b0;
-            border-left: 3px solid #3d455c;
-            padding-left: 15px;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
-        }
-        .upload-area {
-            background: #12161e;
-            border: 2px dashed #2f364b;
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            margin-bottom: 20px;
-            transition: 0.2s;
-        }
-        .upload-area:hover {
-            border-color: #5d6a8f;
-            background: #171d29;
-        }
-        .upload-text {
-            color: #b4bfd9;
-            font-size: 1.1rem;
-        }
-        .upload-hint {
-            color: #616b87;
-            font-size: 0.85rem;
-            margin-top: 5px;
-        }
-        #fileInput {
-            display: none;
-        }
-        .file-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #131823;
-            border-radius: 12px;
-            padding: 10px 20px;
-            margin: 10px 0 20px;
-            border: 1px solid #2b3142;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .file-name {
-            color: #c8d2e8;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .file-badge {
-            background: #2b3349;
-            padding: 3px 15px;
-            border-radius: 30px;
-            color: #b7c2df;
-            font-size: 0.75rem;
-        }
-        .btn {
-            background: #2f3a58;
-            border: none;
-            color: white;
-            font-weight: 500;
-            padding: 10px 25px;
-            border-radius: 40px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            border: 1px solid #3f4a6b;
-            transition: 0.15s;
-        }
-        .btn-primary {
-            background: #4a5b88;
-            border-color: #6b7db0;
-        }
-        .btn-primary:hover:not(:disabled) {
-            background: #5d70a5;
-            transform: scale(1.02);
-        }
-        .btn-primary:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .btn-outline {
-            background: transparent;
-            border-color: #404a68;
-            color: #b8c4e0;
-        }
-        .btn-outline:hover {
-            background: #252d42;
-        }
-        .action-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 15px 0;
-            align-items: center;
-        }
-        
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 5px;
-            margin-top: 20px;
-            border-bottom: 1px solid #2b3142;
-        }
-        .tab-btn {
-            background: transparent;
-            border: none;
-            color: #7b88aa;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            border-bottom: 2px solid transparent;
-            transition: 0.2s;
-            font-weight: 500;
-        }
-        .tab-btn:hover {
-            color: #b4bfd9;
-        }
-        .tab-btn.active {
-            color: #e4ecff;
-            border-bottom-color: #4a5b88;
-        }
-        .tab-btn.disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-        .tab-content {
-            display: none;
-            padding: 20px 0;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        
-        .result-box {
-            background: #0e121b;
-            border-radius: 15px;
-            padding: 15px 20px;
-            border: 1px solid #2b3247;
-            margin-top: 15px;
-        }
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .result-label {
-            color: #7b88aa;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-        }
-        .copy-btn {
-            background: transparent;
-            border: none;
-            color: #6b7db0;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 1.1rem;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .copy-btn:hover {
-            background: #1f2638;
-            color: #8a9dd0;
-        }
-        .copy-btn.copied {
-            color: #7ac97a;
-        }
-        .copy-icon {
-            font-size: 1.2rem;
-        }
-        .pattern-mask {
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            color: #e4ecff;
-            background: #0a0e16;
-            padding: 10px 15px;
-            border-radius: 10px;
-            border: 1px solid #242b3f;
-            max-height: 300px;
-            overflow-y: auto;
-            word-break: break-all;
-            white-space: pre-wrap;
-            position: relative;
-        }
-        .pattern-mask::-webkit-scrollbar {
-            width: 6px;
-        }
-        .pattern-mask::-webkit-scrollbar-track {
-            background: #0a0e16;
-        }
-        .pattern-mask::-webkit-scrollbar-thumb {
-            background: #2f3a58;
-            border-radius: 3px;
-        }
-        .pattern-mask::-webkit-scrollbar-thumb:hover {
-            background: #4a5b88;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .stat-item {
-            background: #131823;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid #242b3f;
-        }
-        .stat-label {
-            color: #7b88aa;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-        }
-        .stat-value {
-            color: #d0dbf5;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-        
-        /* Offset Calculator Styles */
-        .offset-calculator {
-            background: #0e121b;
-            border-radius: 15px;
-            padding: 20px;
-            border: 1px solid #2b3247;
-        }
-        .offset-inputs {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .input-group {
-            background: #131823;
-            padding: 12px 15px;
-            border-radius: 10px;
-            border: 1px solid #242b3f;
-        }
-        .input-group label {
-            color: #7b88aa;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .input-group input {
-            background: #0a0e16;
-            border: 1px solid #2b3142;
-            color: #e4ecff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            width: 100%;
-            font-size: 0.9rem;
-            font-family: 'Courier New', monospace;
-        }
-        .input-group input:focus {
-            outline: none;
-            border-color: #4a5b88;
-        }
-        .input-group input:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Large textarea for custom pattern */
-        .input-group textarea {
-            background: #0a0e16;
-            border: 1px solid #2b3142;
-            color: #e4ecff;
-            padding: 10px 12px;
-            border-radius: 6px;
-            width: 100%;
-            min-height: 150px;
-            max-height: 300px;
-            font-size: 0.85rem;
-            font-family: 'Courier New', monospace;
-            resize: vertical;
-            line-height: 1.6;
-            word-break: break-all;
-        }
-        .input-group textarea:focus {
-            outline: none;
-            border-color: #4a5b88;
-        }
-        .input-group textarea:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .input-group .helper-text {
-            color: #616b87;
-            font-size: 0.7rem;
-            margin-top: 4px;
-        }
-        .input-group .helper-text.highlight {
-            color: #7aadc9;
-        }
-        
-        /* Full width textarea container */
-        .input-group.full-width {
-            grid-column: 1 / -1;
-        }
-        
-        /* Input with toggle */
-        .input-with-toggle {
-            display: flex;
             gap: 8px;
-            align-items: center;
-        }
-        .input-with-toggle input {
-            flex: 1;
-        }
-        .toggle-group {
-            display: flex;
-            background: #0a0e16;
-            border: 1px solid #2b3142;
-            border-radius: 6px;
-            overflow: hidden;
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: var(--font-ui);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
             flex-shrink: 0;
         }
-        .toggle-group button {
-            background: transparent;
-            border: none;
-            color: #7b88aa;
-            padding: 6px 12px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            transition: 0.2s;
+        .web-tool-btn:hover {
+            border-color: var(--red-primary);
+            background: rgba(255, 45, 85, 0.1);
+            color: var(--red-primary);
+            transform: translateY(-2px);
         }
-        .toggle-group button:hover {
-            color: #b4bfd9;
-        }
-        .toggle-group button.active {
-            background: #4a5b88;
-            color: #e4ecff;
-        }
+        .web-tool-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+        .panel-header { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 20px; flex-shrink: 0;}
+        .panel-title { font-family: var(--font-ui); font-size: 16px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+        .panel-title .dot { width: 6px; height: 6px; background: var(--red-primary); border-radius: 50%; box-shadow: 0 0 8px var(--red-primary); }
+
+        /* =========================================
+           EXTERNAL MODE STYLES
+           ========================================= */
+        .external-container { display: flex; flex-direction: column; gap: 16px; width: 100%; height: 100%; overflow-y: auto; padding-right: 4px; }
         
-        .offset-results {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+        .ext-tabs { display: flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px; flex-shrink: 0; }
+        .ext-tab { flex: 1; background: transparent; border: none; color: var(--text-muted); font-family: var(--font-ui); font-size: 14px; font-weight: 600; padding: 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .ext-tab:hover { color: var(--text-main); background: var(--bg-card-hover); }
+        .ext-tab.active { background: var(--bg-panel); color: var(--red-primary); box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        
+        .ext-tab-content { display: none; flex-direction: column; gap: 16px; }
+        .ext-tab-content.active { display: flex; }
+
+        .ext-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; transition: border-color 0.2s; }
+        .ext-card:hover { border-color: #333; }
+        .ext-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .ext-card-header h3 { font-family: var(--font-ui); font-size: 16px; font-weight: 700; color: var(--red-primary); text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
+        .ext-badge { background: rgba(255, 45, 85, 0.1); border: 1px solid rgba(255, 45, 85, 0.3); color: var(--red-primary); font-family: var(--font-mono); font-size: 9px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; font-weight: 600; }
+
+        /* PERFECT INPUT DESIGN */
+        .ext-anchor-row { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: var(--bg-panel); 
+            padding: 12px 16px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border-color); 
+            margin-bottom: 16px; 
         }
-        .offset-result {
-            background: #131823;
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #242b3f;
+        .ext-anchor-label { 
+            font-family: var(--font-ui); 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
         }
-        .offset-result .label {
-            color: #7b88aa;
-            font-size: 0.75rem;
-            text-transform: uppercase;
+        .ext-anchor-inputs { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
         }
-        .offset-result .value {
-            color: #4a8bb0;
-            font-size: 1.3rem;
-            font-weight: 600;
-            font-family: 'Courier New', monospace;
-            margin-top: 5px;
+        .ext-hex-input { 
+            background: var(--bg-base); 
+            border: 1px solid var(--border-color); 
+            border-radius: 6px; 
+            color: var(--text-main); 
+            font-family: var(--font-mono); 
+            font-size: 14px; 
+            font-weight: 700; 
+            width: 48px; 
+            height: 36px; 
+            text-align: center; 
+            text-transform: uppercase; 
+            outline: none; 
+            transition: border-color 0.2s; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .offset-result .value.decimal {
-            color: #7ac97a;
-        }
-        .offset-result .formula {
-            color: #616b87;
-            font-size: 0.75rem;
-            margin-top: 5px;
-            font-family: 'Courier New', monospace;
-        }
-        .warning {
-            color: #d6b07a;
-            background: #1f1f2a;
-            border-left: 4px solid #b68b4a;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-        .info {
-            color: #7aadc9;
-            background: #1a2633;
-            border-left: 4px solid #4a8bb0;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-        .success {
-            color: #7ac97a;
-            background: #1a2a1a;
-            border-left: 4px solid #4ab04a;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-        .footer {
-            margin-top: 25px;
-            color: #4b5679;
-            font-size: 0.8rem;
-            text-align: center;
-            border-top: 1px solid #232b3f;
-            padding-top: 15px;
-        }
-        .badge {
-            background: #1f283d;
-            border-radius: 30px;
-            padding: 2px 12px;
-            font-size: 0.7rem;
-            color: #a9b9e0;
-            border: 1px solid #323d5a;
-            display: inline-block;
-        }
-        .spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #6b7db0;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        .spinner.active {
-            display: inline-block;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #2a3349;
-            color: #e4ecff;
-            padding: 10px 25px;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            border: 1px solid #4a5b88;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            z-index: 1000;
-        }
-        .toast.show {
-            opacity: 1;
-        }
-        .pattern-length-display {
-            background: #0a0e16;
-            border: 1px solid #4a5b88;
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin-top: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            color: #7ac97a;
-            text-align: center;
-        }
-        .offset-info-message {
-            color: #7aadc9;
-            background: #1a2633;
-            border-left: 4px solid #4a8bb0;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-            text-align: center;
+        .ext-hex-input:focus { border-color: var(--red-primary); }
+        .ext-anchor-sep { color: #555; font-weight: bold; font-size: 18px; }
+
+        .ext-output-box { background: #000; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-family: var(--font-mono); font-size: 12px; color: var(--text-main); line-height: 1.8; position: relative; min-height: 80px; }
+        .pattern-line { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .pattern-byte { background: rgba(255,255,255,0.05); padding: 4px 6px; border-radius: 4px; border: 1px solid transparent; font-weight: 600; }
+        .pattern-byte.wildcard { color: var(--red-primary); background: rgba(255, 45, 85, 0.1); border-color: rgba(255, 45, 85, 0.2); }
+        .pattern-byte.yellow { color: #ffa726; background: rgba(255, 167, 38, 0.1); border-color: rgba(255, 167, 38, 0.2); }
+
+        .copy-icon-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; cursor: pointer; transition: all 0.2s; }
+        .copy-icon-btn:hover { background: var(--red-primary); color: white; border-color: var(--red-primary); }
+        .copy-icon-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+        .ext-calc-section { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; }
+        .ext-calc-section:last-child { margin-bottom: 0; }
+        .ext-calc-section-title { color: var(--text-muted); font-family: var(--font-ui); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .ext-calc-textarea { background: var(--bg-base); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono); font-size: 12px; padding: 10px; width: 100%; min-height: 60px; max-height: 120px; resize: vertical; line-height: 1.5; word-break: break-all; outline: none; }
+        .ext-calc-textarea:focus { border-color: var(--red-primary); }
+        .ext-calc-len { font-family: var(--font-mono); font-size: 11px; color: #00e676; margin-top: 6px; text-align: right; }
+        .ext-calc-input { background: var(--bg-base); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono); font-size: 12px; padding: 10px; width: 100%; outline: none; }
+        .ext-calc-input:focus { border-color: var(--red-primary); }
+
+        .ext-rw-row { display: flex; gap: 10px; margin-top: 12px; }
+        .ext-rw-chip { background: var(--bg-base); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; flex: 1; position: relative; }
+        .ext-rw-chip .k { color: var(--text-muted); font-family: var(--font-ui); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+        .ext-rw-chip .v { color: #00e676; font-family: var(--font-mono); font-size: 16px; font-weight: 700; }
+        .ext-rw-chip .copy-icon-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; }
+        
+        .ext-results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
+        .ext-result-item { background: var(--bg-base); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; position: relative; }
+        .ext-result-item .label { color: var(--text-muted); font-family: var(--font-ui); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .ext-result-item .value { color: var(--red-primary); font-family: var(--font-mono); font-size: 18px; font-weight: 700; margin-top: 4px; }
+        .ext-result-item .value.dec { color: #00e676; }
+        .ext-result-item .value.base { color: #ffa726; }
+        .ext-result-item .formula { color: #555; font-family: var(--font-mono); font-size: 10px; margin-top: 4px; }
+        .ext-result-item .copy-icon-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; }
+
+        .ext-calc-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .ext-calc-btn { background: var(--bg-card); border: 1px solid var(--red-primary); color: var(--red-primary); font-family: var(--font-ui); font-size: 13px; font-weight: 600; padding: 12px 20px; border-radius: 6px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; }
+        .ext-calc-btn:hover { background: var(--red-primary); color: white; }
+        .ext-calc-btn.primary { background: linear-gradient(135deg, var(--red-primary), var(--red-dark)); border-color: transparent; color: white; }
+        .ext-calc-btn.primary:hover { box-shadow: 0 4px 14px rgba(255, 45, 85, 0.4); }
+
+        /* =========================================
+           MOBILE RESPONSIVE LAYOUT
+           ========================================= */
+        @media (max-width: 768px) {
+            .app { display: block; height: 100vh; position: relative; }
+            .main-panel { padding: 16px; }
+            .sidebar { display: none; }
+            .brand { justify-content: flex-start; margin-bottom: 12px; gap: 10px; padding-right: 40px; }
+            .brand-icon { width: 32px; height: 32px; border-radius: 8px; }
+            .brand-icon svg { width: 18px; height: 18px; }
+            .brand-text h1 { font-size: 18px; }
+            .brand-text p { font-size: 9px; margin-top: 2px; }
+            .upload-box-container { margin-top: 16px; margin-bottom: 24px; }
+            .upload-scanner { padding: 30px 16px; }
+            .radar-wrap { width: 50px; height: 50px; }
+            .file-item { padding: 10px; }
+            .ext-results-grid { grid-template-columns: 1fr 1fr; }
+            .ext-rw-row { flex-direction: column; gap: 6px; }
         }
     </style>
 </head>
 <body>
-
-    <div class="card">
-        <h1>🧬 Hex Pattern Analyzer Done</h1>
-        <div class="subhead">
-            Upload <strong>.txt</strong> file &nbsp;·&nbsp; patterns end with <strong>A5 43</strong>
-            <span class="badge" style="margin-left: 10px;">last 2 bytes preserved</span>
-        </div>
-
-        <div class="upload-area" id="dropZone">
-            <div class="upload-text">📤 Drop your .txt file here or click to browse</div>
-            <div class="upload-hint">Patterns separated by blank lines · Hex bytes with spaces</div>
-            <input type="file" id="fileInput" accept=".txt">
-        </div>
-
-        <div class="file-status">
-            <span class="file-name" id="fileName">📄 No file selected</span>
-            <span class="file-badge" id="patternCount">0 patterns</span>
-        </div>
-
-        <div class="action-row">
-            <button class="btn btn-primary" id="analyzeBtn" disabled>⚡ Generate Mask</button>
-            <button class="btn btn-outline" id="clearBtn">✕ Clear</button>
-            <span style="color:#5a6a8f; font-size:0.8rem; margin-left: auto;">Only 00 · FF · ?? allowed</span>
-            <span class="spinner" id="spinner"></span>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="pattern">Pattern</button>
-            <button class="tab-btn disabled" data-tab="offsets" id="offsetTab">Offset Calculator</button>
-        </div>
-
-        <!-- Tab 1: Pattern -->
-        <div class="tab-content active" id="tab-pattern">
-            <div id="resultContainer">
-                <div class="result-box" style="border-color: #1f253b; opacity: 0.6;">
-                    <div class="result-header">
-                        <span class="result-label">⬤ Generic Pattern</span>
-                        <span id="resultLength" style="color:#7b88aa; font-size:0.8rem;">—</span>
-                    </div>
-                    <div class="pattern-mask" id="maskDisplay" style="color:#6e7b9e;">Waiting for patterns…</div>
-                    <div style="display:flex; justify-content:flex-end; margin-top:5px;">
-                        <button class="copy-btn" id="copyBtn" title="Copy pattern to clipboard" style="display:none;">
-                            <span class="copy-icon">📋</span> Copy
-                        </button>
-                    </div>
-                    <div class="stats-grid" id="statsGrid">
-                        <div class="stat-item">
-                            <div class="stat-label">Fixed Bytes</div>
-                            <div class="stat-value" id="fixedCount">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Wildcards</div>
-                            <div class="stat-value" id="wildcardCount">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Bytes</div>
-                            <div class="stat-value" id="totalBytes">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Last 2 Bytes</div>
-                            <div class="stat-value" id="lastTwoDisplay">—</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Patterns Used</div>
-                            <div class="stat-value" id="patternsUsed">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Skipped</div>
-                            <div class="stat-value" id="skippedCount">-</div>
-                        </div>
-                    </div>
-                </div>
-                <div id="warningBox" class="warning" style="display: none;"></div>
-                <div id="infoBox" class="info" style="display: none;"></div>
-                <div id="successBox" class="success" style="display: none;"></div>
-            </div>
-        </div>
-
-        <!-- Tab 2: Offset Calculator -->
-        <div class="tab-content" id="tab-offsets">
-            <div class="offset-calculator">
-                <div class="offset-info-message" id="offsetInfoMessage">
-                    ✅ Generic Pattern loaded: <span id="genericLengthDisplay">0</span> bytes
-                </div>
-                
-                <div class="offset-inputs">
-                    <div class="input-group">
-                        <label>Base Value</label>
-                        <input type="number" id="baseValue" disabled>
-                        <div class="helper-text">Auto-calculated</div>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Read Offset Value</label>
-                        <div class="input-with-toggle">
-                            <input type="text" id="readOffset" value="0xB8">
-                            <div class="toggle-group" id="readToggle">
-                                <button data-value="dec">DEC</button>
-                                <button class="active" data-value="hex">HEX</button>
-                            </div>
-                        </div>
-                        <div class="helper-text" id="readOffsetDisplay">Hex: 0xB8</div>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label>Write Offset Value</label>
-                        <div class="input-with-toggle">
-                            <input type="text" id="writeOffset" value="0xB4">
-                            <div class="toggle-group" id="writeToggle">
-                                <button data-value="dec">DEC</button>
-                                <button class="active" data-value="hex">HEX</button>
-                            </div>
-                        </div>
-                        <div class="helper-text" id="writeOffsetDisplay">Hex: 0xB4</div>
-                    </div>
-                    
-                    <!-- Full width textarea for custom pattern -->
-                    <div class="input-group full-width">
-                        <label>Custom Pattern (paste hex bytes here)</label>
-                        <textarea id="customPattern" placeholder="FF FF 00 00 00 00 00 00 00 00 00 00 0A 43"></textarea>
-                        <div class="pattern-length-display" id="patternLengthDisplay">Pattern length: 0 bytes</div>
-                    </div>
-                </div>
-                
-                <div class="offset-results">
-                    <div class="offset-result">
-                        <div class="label">Read Offset (Hex)</div>
-                        <div class="value" id="readOffsetHex">—</div>
-                    </div>
-                    <div class="offset-result">
-                        <div class="label">Write Offset (Hex)</div>
-                        <div class="value" id="writeOffsetHex">—</div>
-                    </div>
-                    <div class="offset-result">
-                        <div class="label">Base Value (Decimal)</div>
-                        <div class="value decimal" id="baseValueDisplay">—</div>
-                    </div>
+    <div class="app">
+        <!-- SIDEBAR (Upload Only) -->
+        <aside class="sidebar active-tab" id="tabUpload">
+            <div class="brand"><div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><div class="brand-text"><h1>OFFSET <span>EXTRACTOR</span></h1><p>COW.GAMEPLAY DUMP</p></div></div>
+            
+            <div class="upload-box-container">
+                <div class="upload-scanner" id="dropZone">
+                    <div class="radar-wrap"><div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-sweep"></div><div class="radar-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div></div>
+                    <h3><span>Click to upload</span></h3><p>or drag & drop</p>
+                    <input type="file" id="fileInput" accept=".cs,.txt">
                 </div>
             </div>
-        </div>
-
-        <div class="footer">
-            Patterns starting with <strong>FF FF</strong> accepted · Others skipped
-        </div>
-    </div>
-
-    <!-- Toast notification -->
-    <div class="toast" id="toast">✅ Copied to clipboard!</div>
-
-    <script>
-        (function() {
-            // DOM Elements
-            const dropZone = document.getElementById('dropZone');
-            const fileInput = document.getElementById('fileInput');
-            const fileName = document.getElementById('fileName');
-            const patternCount = document.getElementById('patternCount');
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const clearBtn = document.getElementById('clearBtn');
-            const maskDisplay = document.getElementById('maskDisplay');
-            const resultLength = document.getElementById('resultLength');
-            const fixedCount = document.getElementById('fixedCount');
-            const wildcardCount = document.getElementById('wildcardCount');
-            const totalBytes = document.getElementById('totalBytes');
-            const lastTwoDisplay = document.getElementById('lastTwoDisplay');
-            const patternsUsed = document.getElementById('patternsUsed');
-            const skippedCount = document.getElementById('skippedCount');
-            const warningBox = document.getElementById('warningBox');
-            const infoBox = document.getElementById('infoBox');
-            const successBox = document.getElementById('successBox');
-            const spinner = document.getElementById('spinner');
-            const copyBtn = document.getElementById('copyBtn');
-            const toast = document.getElementById('toast');
-            const offsetTab = document.getElementById('offsetTab');
-            const genericLengthDisplay = document.getElementById('genericLengthDisplay');
-            const offsetInfoMessage = document.getElementById('offsetInfoMessage');
+            <div class="status-bar" id="status"></div>
+            <div class="file-list" id="fileList"></div>
             
-            // Offset elements
-            const baseValueInput = document.getElementById('baseValue');
-            const readOffsetInput = document.getElementById('readOffset');
-            const writeOffsetInput = document.getElementById('writeOffset');
-            const readOffsetHex = document.getElementById('readOffsetHex');
-            const writeOffsetHex = document.getElementById('writeOffsetHex');
-            const baseValueDisplay = document.getElementById('baseValueDisplay');
-            const customPattern = document.getElementById('customPattern');
-            const patternLengthDisplay = document.getElementById('patternLengthDisplay');
-            const readOffsetDisplay = document.getElementById('readOffsetDisplay');
-            const writeOffsetDisplay = document.getElementById('writeOffsetDisplay');
+            <!-- NEW WEB TOOL BUTTON -->
+            <a href="https://offset-finder-tool.vercel.app/" target="_blank" class="web-tool-btn">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                INTERNAL OFFSETS DUMP
+            </a>
+        </aside>
+        
+        <!-- MAIN PANEL (External Mode Only) -->
+        <main class="main-panel" id="tabDetails">
+            <div class="panel-header">
+                <div class="panel-title"><span class="dot"></span> External AOB Logic</div>
+            </div>
             
-            // Toggle buttons
-            const readToggleBtns = document.querySelectorAll('#readToggle button');
-            const writeToggleBtns = document.querySelectorAll('#writeToggle button');
-            
-            // State for toggle modes
-            let readMode = 'hex';
-            let writeMode = 'hex';
-
-            // Tab elements
-            const tabBtns = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
-
-            // State
-            let patterns = [];
-            let skippedPatterns = 0;
-            let fileLoaded = false;
-            let filename = '';
-            let currentPattern = '';
-            let totalPatternLength = 0;
-            let hasGenericPattern = false;
-
-            // Tab switching
-            tabBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (this.classList.contains('disabled')) return;
-                    
-                    const tabName = this.dataset.tab;
-                    
-                    tabBtns.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    document.getElementById('tab-' + tabName).classList.add('active');
-                });
-            });
-
-            // Read toggle buttons
-            readToggleBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    readToggleBtns.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    readMode = this.dataset.value;
-                    
-                    if (readMode === 'hex') {
-                        readOffsetInput.placeholder = '0x...';
-                        const val = parseInt(readOffsetInput.value);
-                        if (!isNaN(val) && val >= 0) {
-                            readOffsetInput.value = '0x' + val.toString(16).toUpperCase();
-                        }
-                    } else {
-                        readOffsetInput.placeholder = '184';
-                        let val = readOffsetInput.value.trim();
-                        if (val.startsWith('0x')) {
-                            val = parseInt(val, 16);
-                            if (!isNaN(val)) {
-                                readOffsetInput.value = val;
-                            }
-                        }
-                    }
-                    calculateOffsets();
-                });
-            });
-
-            // Write toggle buttons
-            writeToggleBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    writeToggleBtns.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    writeMode = this.dataset.value;
-                    
-                    if (writeMode === 'hex') {
-                        writeOffsetInput.placeholder = '0x...';
-                        const val = parseInt(writeOffsetInput.value);
-                        if (!isNaN(val) && val >= 0) {
-                            writeOffsetInput.value = '0x' + val.toString(16).toUpperCase();
-                        }
-                    } else {
-                        writeOffsetInput.placeholder = '180';
-                        let val = writeOffsetInput.value.trim();
-                        if (val.startsWith('0x')) {
-                            val = parseInt(val, 16);
-                            if (!isNaN(val)) {
-                                writeOffsetInput.value = val;
-                            }
-                        }
-                    }
-                    calculateOffsets();
-                });
-            });
-
-            // Custom pattern input listener
-            customPattern.addEventListener('input', function() {
-                calculateOffsets();
-            });
-
-            // Read/Write offset input listeners
-            readOffsetInput.addEventListener('input', function() {
-                let val = readOffsetInput.value.trim();
-                if (val.startsWith('0x')) {
-                    const dec = parseInt(val, 16);
-                    if (!isNaN(dec)) {
-                        readOffsetDisplay.textContent = 'Hex: ' + val.toUpperCase();
-                    } else {
-                        readOffsetDisplay.textContent = 'Invalid hex';
-                    }
-                } else {
-                    const num = parseInt(val);
-                    if (!isNaN(num) && num >= 0) {
-                        readOffsetDisplay.textContent = 'Decimal: ' + num;
-                    } else {
-                        readOffsetDisplay.textContent = 'Invalid decimal';
-                    }
-                }
-                calculateOffsets();
-            });
-            
-            writeOffsetInput.addEventListener('input', function() {
-                let val = writeOffsetInput.value.trim();
-                if (val.startsWith('0x')) {
-                    const dec = parseInt(val, 16);
-                    if (!isNaN(dec)) {
-                        writeOffsetDisplay.textContent = 'Hex: ' + val.toUpperCase();
-                    } else {
-                        writeOffsetDisplay.textContent = 'Invalid hex';
-                    }
-                } else {
-                    const num = parseInt(val);
-                    if (!isNaN(num) && num >= 0) {
-                        writeOffsetDisplay.textContent = 'Decimal: ' + num;
-                    } else {
-                        writeOffsetDisplay.textContent = 'Invalid decimal';
-                    }
-                }
-                calculateOffsets();
-            });
-
-            function getValueFromInput(input, mode) {
-                let val = input.value.trim();
-                if (mode === 'hex') {
-                    if (val.startsWith('0x')) {
-                        val = val.substring(2);
-                    }
-                    return parseInt(val, 16);
-                } else {
-                    return parseInt(val);
-                }
-            }
-
-            // Function to count bytes including ?? wildcards
-            function countBytesInPattern(text) {
-                if (!text || !text.trim()) return 0;
+            <div class="external-container">
                 
-                const parts = text.trim().split(/\s+/);
-                let count = 0;
-                
-                for (let part of parts) {
-                    if (part === '??' || (part.length === 2 && /^[0-9A-Fa-f]{2}$/.test(part))) {
-                        count++;
-                    }
-                    else if (part.length > 2 && /^[0-9A-Fa-f]+$/.test(part)) {
-                        for (let i = 0; i < part.length; i += 2) {
-                            if (i + 1 < part.length) {
-                                count++;
-                            }
-                        }
-                    }
-                }
-                
-                return count;
-            }
+                <div class="ext-tabs">
+                    <button class="ext-tab active" data-tab="tab1">Method 1</button>
+                    <button class="ext-tab" data-tab="tab2">Method 2</button>
+                </div>
 
-            function toHexStr(num) {
-                return '0x' + num.toString(16).toUpperCase();
-            }
-
-            function calculateOffsets() {
-                const text = customPattern.value;
-                const readVal = getValueFromInput(readOffsetInput, readMode);
-                const writeVal = getValueFromInput(writeOffsetInput, writeMode);
-                const genericLen = totalPatternLength || 0;
-                
-                if (!text || !text.trim()) {
-                    patternLengthDisplay.textContent = 'Pattern length: 0 bytes';
-                    baseValueInput.value = '';
-                    baseValueDisplay.textContent = '—';
-                    readOffsetHex.textContent = '—';
-                    writeOffsetHex.textContent = '—';
-                    return;
-                }
-                
-                // Count all bytes including ?? wildcards
-                const length = countBytesInPattern(text);
-                patternLengthDisplay.textContent = `Pattern length: ${length} bytes`;
-                
-                if (length > 0 && !isNaN(readVal) && !isNaN(writeVal) && genericLen > 0) {
-                    // Use the full pattern length as subtract value
-                    const subtractVal = length;
-                    
-                    // Use the GENERIC PATTERN LENGTH from Tab 1 for base calculation
-                    const base = genericLen - subtractVal;
-                    baseValueInput.value = base;
-                    baseValueDisplay.textContent = base;
-                    
-                    // Calculate read offset (ADDITION) - NO PADDING
-                    const readOffset = base + readVal;
-                    const readOffsetHexStr = toHexStr(readOffset);
-                    readOffsetHex.textContent = readOffsetHexStr;
-
-                    // Calculate write offset (ADDITION) - NO PADDING
-                    const writeOffset = base + writeVal;
-                    const writeOffsetHexStr = toHexStr(writeOffset);
-                    writeOffsetHex.textContent = writeOffsetHexStr;
-                }
-            }
-
-            function clearResults() {
-                maskDisplay.textContent = 'Waiting for patterns…';
-                maskDisplay.style.color = '#6e7b9e';
-                resultLength.textContent = '—';
-                fixedCount.textContent = '-';
-                wildcardCount.textContent = '-';
-                totalBytes.textContent = '-';
-                lastTwoDisplay.textContent = '—';
-                patternsUsed.textContent = '-';
-                skippedCount.textContent = '-';
-                warningBox.style.display = 'none';
-                infoBox.style.display = 'none';
-                successBox.style.display = 'none';
-                copyBtn.style.display = 'none';
-                currentPattern = '';
-                totalPatternLength = 0;
-                hasGenericPattern = false;
-                
-                // Disable Offset Calculator tab
-                offsetTab.classList.add('disabled');
-                if (offsetTab.classList.contains('active')) {
-                    offsetTab.classList.remove('active');
-                    document.querySelector('.tab-btn[data-tab="pattern"]').classList.add('active');
-                    document.getElementById('tab-pattern').classList.add('active');
-                    document.getElementById('tab-offsets').classList.remove('active');
-                }
-                
-                // Reset offset fields
-                baseValueInput.value = '';
-                baseValueDisplay.textContent = '—';
-                readOffsetHex.textContent = '—';
-                writeOffsetHex.textContent = '—';
-                patternLengthDisplay.textContent = 'Pattern length: 0 bytes';
-                readOffsetDisplay.textContent = 'Hex: 0xB8';
-                writeOffsetDisplay.textContent = 'Hex: 0xB4';
-                genericLengthDisplay.textContent = '0';
-                offsetInfoMessage.style.display = 'block';
-                offsetInfoMessage.innerHTML = '✅ Generic Pattern loaded: <span id="genericLengthDisplay">0</span> bytes';
-            }
-
-            function updateStatus() {
-                fileName.textContent = filename ? `📄 ${filename}` : '📄 No file selected';
-                patternCount.textContent = patterns.length + ' patterns';
-                analyzeBtn.disabled = patterns.length < 2;
-            }
-
-           
-            function extractPatternsFromText(text) {
-    // Normalize whitespace
-    const cleanText = text.replace(/\s+/g, ' ').trim();
-
-    // Step 1: Har "FF FF ... A5 43" occurrence extract karo (global, greedy)
-    // 'FF FF' se shuru, 'A5 43' par khatam (inclusive)
-    const patternRegex = /FF FF(?:[0-9A-Fa-f]{2}|[0-9A-Fa-f]{2}\s+)*?A5 43/g;
-
-    // Better: line-by-line ya segment-by-segment process karo
-    const segments = [];
-    let searchStart = 0;
-    while (searchStart < cleanText.length) {
-        // 'FF FF' dhoondo
-        const ffIdx = cleanText.indexOf('FF FF', searchStart);
-        if (ffIdx === -1) break;
-
-        // 'A5 43' dhoondo (ffIdx ke baad)
-        const a5Idx = cleanText.indexOf('A5 43', ffIdx + 5);
-        if (a5Idx === -1) break;
-
-        // Extract 'FF FF ... A5 43'
-        const extracted = cleanText.substring(ffIdx, a5Idx + 5);
-        segments.push(extracted);
-
-        // Next search 'A5 43' ke baad se shuru
-        searchStart = a5Idx + 5;
-    }
-
-    // Step 2: Validation + cleanup
-    const validPatterns = [];
-    let skipped = 0;
-
-    for (let seg of segments) {
-        const bytes = seg.split(' ').filter(b => b.length === 2);
-        if (bytes.length < 4) continue;
-
-        // FF FF check (already guaranteed, but double-check)
-        if (bytes[0] === 'FF' && bytes[1] === 'FF') {
-            // Verify 'A5 43' at end
-            const lastTwo = bytes.slice(-2).join(' ');
-            if (lastTwo === 'A5 43') {
-                validPatterns.push(bytes.join(' '));
-            } else {
-                skipped++;
-            }
-        } else {
-            skipped++;
-        }
-    }
-
-    return { valid: validPatterns, skipped: skipped };
-}
-
-            function analyzePatterns(patterns) {
-    if (!patterns || patterns.length < 2) {
-        return null;
-    }
-
-    const bytePatterns = [];
-    for (let p of patterns) {
-        const bytes = p.split(' ').filter(b => b.length === 2);
-        if (bytes.length > 0) {
-            bytePatterns.push(bytes);
-        }
-    }
-
-    if (bytePatterns.length < 2) return null;
-
-    // ✅ maxLen use karo — sabse lambe pattern ki length
-    const maxLen = Math.max(...bytePatterns.map(bp => bp.length));
-
-    // ✅ Shorter patterns ko '??' se pad karo
-    const padded = bytePatterns.map(bp => {
-        const copy = bp.slice();
-        while (copy.length < maxLen) {
-            copy.push('??');  // pad with wildcard
-        }
-        return copy;
-    });
-
-    const generic = [];
-    for (let i = 0; i < maxLen; i++) {
-        const first = padded[0][i];
-        let allSame = true;
-        for (let j = 1; j < padded.length; j++) {
-            if (padded[j][i] !== first) {
-                allSame = false;
-                break;
-            }
-        }
-        // Agar koi bhi '??' hai us position par, toh result bhi '??'
-        generic.push(allSame ? first : '??');
-    }
-
-    const lastTwoStart = Math.max(0, generic.length - 2);
-    const allowedSet = new Set(['00', 'FF', '??']);
-
-    for (let i = 0; i < generic.length; i++) {
-        if (i >= lastTwoStart) continue;
-        if (!allowedSet.has(generic[i])) {
-            generic[i] = '??';
-        }
-    }
-
-    const maskStr = generic.join(' ');
-    const wildcardCount = maskStr.split('??').length - 1;
-    const total = generic.length;
-    const fixed = total - wildcardCount;
-
-    let lastTwo = '—';
-    if (total >= 2) {
-        lastTwo = generic.slice(-2).join(' ');
-    }
-
-    return {
-        mask: maskStr,
-        total,
-        fixed,
-        wildcard: wildcardCount,
-        lastTwo,
-        patternsUsed: patterns.length
-    };
-}
-            function showToast(message) {
-                toast.textContent = message;
-                toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 2000);
-            }
-
-            function copyToClipboard(text) {
-                if (!text || text === 'Waiting for patterns…') {
-                    showToast('⚠️ Nothing to copy');
-                    return;
-                }
-
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text)
-                        .then(() => {
-                            showToast('✅ Copied to clipboard!');
-                            copyBtn.classList.add('copied');
-                            setTimeout(() => copyBtn.classList.remove('copied'), 2000);
-                        })
-                        .catch(() => {
-                            fallbackCopy(text);
-                        });
-                } else {
-                    fallbackCopy(text);
-                }
-            }
-
-            function fallbackCopy(text) {
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                textarea.style.left = '-9999px';
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    showToast('✅ Copied to clipboard!');
-                    copyBtn.classList.add('copied');
-                    setTimeout(() => copyBtn.classList.remove('copied'), 2000);
-                } catch (err) {
-                    showToast('⚠️ Failed to copy');
-                }
-                document.body.removeChild(textarea);
-            }
-
-            function processFile(file) {
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const text = e.target.result;
-                        filename = file.name;
-
-                        const result = extractPatternsFromText(text);
-
-                        if (result.valid.length === 0) {
-                            alert('No valid patterns found. Patterns must start with "FF FF".');
-                            return;
-                        }
-
-                        patterns = result.valid;
-                        skippedPatterns = result.skipped;
-                        fileLoaded = true;
-
-                        if (skippedPatterns > 0) {
-                            infoBox.textContent = `ℹ️ ${skippedPatterns} pattern(s) skipped (did not start with FF FF). Using ${patterns.length} valid pattern(s).`;
-                            infoBox.style.display = 'block';
-                        } else {
-                            infoBox.style.display = 'none';
-                        }
-
-                        warningBox.style.display = 'none';
-                        successBox.style.display = 'none';
-                        updateStatus();
-                        clearResults();
-
-                        setTimeout(runAnalysis, 100);
-
-                    } catch (err) {
-                        alert('Error processing file: ' + err.message);
-                    }
-                };
-
-                reader.onerror = function() {
-                    alert('Error reading file.');
-                };
-
-                reader.readAsText(file);
-            }
-
-            function runAnalysis() {
-                if (patterns.length < 2) {
-                    alert('Need at least 2 valid patterns.');
-                    return;
-                }
-
-                spinner.classList.add('active');
-
-                setTimeout(() => {
-                    try {
-                        const result = analyzePatterns(patterns);
-
-                        if (!result) {
-                            maskDisplay.textContent = '⚠️ Analysis failed';
-                            maskDisplay.style.color = '#d9b48f';
-                            return;
-                        }
-
-                        currentPattern = result.mask;
-                        totalPatternLength = result.total;
-                        hasGenericPattern = true;
+                <!-- TAB 1: METHOD 1 -->
+                <div class="ext-tab-content active" id="tab1">
+                    <div class="ext-card">
+                        <div class="ext-card-header"><h3>Method 1 — Validate AOB</h3><span class="ext-badge">START + 3×MID + END</span></div>
                         
-                        maskDisplay.textContent = result.mask;
-                        maskDisplay.style.color = '#e4ecff';
-                        resultLength.textContent = result.total + ' bytes';
-                        fixedCount.textContent = result.fixed;
-                        wildcardCount.textContent = result.wildcard;
-                        totalBytes.textContent = result.total;
-                        lastTwoDisplay.textContent = result.lastTwo || '—';
-                        patternsUsed.textContent = result.patternsUsed;
-                        skippedCount.textContent = skippedPatterns;
+                        <div class="ext-anchor-row">
+                            <span class="ext-anchor-label">End Anchor</span>
+                            <div class="ext-anchor-inputs">
+                                <input type="text" id="extEndByte1A" class="ext-hex-input" value="A5" maxlength="2" spellcheck="false">
+                                <span class="ext-anchor-sep">:</span>
+                                <input type="text" id="extEndByte1B" class="ext-hex-input" value="43" maxlength="2" spellcheck="false">
+                            </div>
+                        </div>
 
-                        copyBtn.style.display = 'flex';
+                        <div class="ext-output-box" id="extOutput1">
+                            <span class="dim" style="color:#555;">⏳ waiting for file from sidebar…</span>
+                        </div>
 
-                        successBox.textContent = `✅ Analysis complete! Generated pattern from ${result.patternsUsed} patterns.`;
-                        successBox.style.display = 'block';
+                        <div style="margin-top:24px;">
+                            <div class="ext-card-header"><h3>🧮 Offset Calculator</h3><span class="ext-badge">Generic − Custom = Base</span></div>
+                            
+                            <div class="ext-calc-section">
+                                <div class="ext-calc-section-title">
+                                    <span>1 · Generic Pattern (from Method 1)</span>
+                                    <button class="copy-icon-btn" onclick="copyText('extGenericPattern')"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                                </div>
+                                <textarea id="extGenericPattern" class="ext-calc-textarea" readonly></textarea>
+                                <div class="ext-calc-len" id="extGenericLenDisplay">Generic length: 0 bytes</div>
+                            </div>
 
-                        // Enable Offset Calculator tab
-                        offsetTab.classList.remove('disabled');
-                        genericLengthDisplay.textContent = result.total;
-                        offsetInfoMessage.style.display = 'block';
-                        offsetInfoMessage.innerHTML = `✅ Generic Pattern loaded: <span style="color:#7ac97a;font-weight:600;">${result.total}</span> bytes`;
+                            <div class="ext-calc-section">
+                                <div class="ext-calc-section-title">
+                                    <span>2 · Custom Pattern (yellow part)</span>
+                                    <button class="copy-icon-btn" onclick="copyText('extCustomPattern')"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                                </div>
+                                <textarea id="extCustomPattern" class="ext-calc-textarea"></textarea>
+                                <div class="ext-calc-len" id="extCustomLenDisplay">Pattern length: 0 bytes</div>
+                            </div>
 
-                        // Recalculate offsets with new generic length
-                        calculateOffsets();
+                            <div class="ext-calc-section">
+                                <div class="ext-calc-section-title">
+                                    <span>3 · Offset (offA) → Read / Write</span>
+                                </div>
+                                <input type="text" id="extOffA" class="ext-calc-input" placeholder="e.g. 0x4E8">
+                                <div class="ext-rw-row">
+                                    <div class="ext-rw-chip">
+                                        <span class="k">Read Offset</span>
+                                        <span class="v" id="extReadValue">0xB8</span>
+                                        <button class="copy-icon-btn" onclick="copyText('extReadValue')"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                                    </div>
+                                    <div class="ext-rw-chip">
+                                        <span class="k">Write Offset</span>
+                                        <span class="v" id="extWriteValue">0xB4</span>
+                                        <button class="copy-icon-btn" onclick="copyText('extWriteValue')"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                                    </div>
+                                </div>
+                            </div>
 
-                    } catch (err) {
-                        alert('Error during analysis: ' + err.message);
-                    } finally {
-                        spinner.classList.remove('active');
+                            <div class="ext-calc-section" style="border-color: var(--red-primary);">
+                                <div class="ext-calc-section-title" style="color:#00e676;">📊 Calculated Offsets</div>
+                                <div class="ext-results-grid">
+                                    <div class="ext-result-item">
+                                        <div class="label">Generic Length</div>
+                                        <div class="value dec" id="extResGeneric">—</div>
+                                    </div>
+                                    <div class="ext-result-item">
+                                        <div class="label">Custom Length</div>
+                                        <div class="value dec" id="extResCustom">—</div>
+                                    </div>
+                                    <div class="ext-result-item">
+                                        <div class="label">Base Value</div>
+                                        <div class="value base" id="extResBase">—</div>
+                                        <div class="formula" id="extResBaseFormula">Generic − Custom</div>
+                                    </div>
+                                    <div class="ext-result-item">
+                                        <div class="label">Read Offset (Hex)</div>
+                                        <div class="value" id="extResReadHex">—</div>
+                                        <div class="formula" id="extResReadFormula">Base + Read</div>
+                                        <button class="copy-icon-btn" onclick="copyText('extResReadHex')"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                                    </div>
+                                    <div class="ext-result-item">
+                                        <div class="label">Write Offset (Hex)</div>
+                                        <div class="value" id="extResWriteHex">—</div>
+                                        <div class="formula" id="extResWriteFormula">Base + Write</div>
+                                        <button class="copy-icon-btn" onclick="copyText('extResWriteHex')"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                                    </div>
+                                    <div class="ext-result-item">
+                                        <div class="label">Read Offset (Dec)</div>
+                                        <div class="value dec" id="extResReadDec">—</div>
+                                    </div>
+                                    <div class="ext-result-item">
+                                        <div class="label">Write Offset (Dec)</div>
+                                        <div class="value dec" id="extResWriteDec">—</div>
+                                    </div>
+                                </div>
+                                <div class="ext-calc-actions">
+                                    <button class="ext-calc-btn primary" id="extCalcBtn">⚡ Calculate Offsets</button>
+                                </div>
+                                <div class="ext-warning" id="extWarning" style="display:none; color:#ffa726; background:rgba(255,167,38,0.08); border-left:3px solid #ffa726; padding:8px 12px; border-radius:4px; margin-top:10px; font-size:11px; font-family:var(--font-mono);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: METHOD 2 -->
+                <div class="ext-tab-content" id="tab2">
+                    <div class="ext-card">
+                        <div class="ext-card-header"><h3>Method 2 — Merge Patterns</h3><span class="ext-badge">Column-wise Merge</span></div>
+                        
+                        <div class="ext-anchor-row">
+                            <span class="ext-anchor-label">End Anchor</span>
+                            <div class="ext-anchor-inputs">
+                                <input type="text" id="extEndByte2A" class="ext-hex-input" value="A5" maxlength="2" spellcheck="false">
+                                <span class="ext-anchor-sep">:</span>
+                                <input type="text" id="extEndByte2B" class="ext-hex-input" value="43" maxlength="2" spellcheck="false">
+                            </div>
+                        </div>
+
+                        <div class="ext-output-box" id="extOutput2">
+                            <span class="dim" style="color:#555;">⏳ waiting for file from sidebar…</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    
+    <script>
+    (function() {
+        'use strict';
+
+        // =========================================================
+        // 1. SHARED STATE
+        // =========================================================
+        let currentFileText = null;
+        const fileListContainer = document.getElementById('fileList');
+        const statusEl = document.getElementById('status');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        // =========================================================
+        // 2. TABS LOGIC
+        // =========================================================
+        document.querySelectorAll('.ext-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.ext-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.ext-tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // =========================================================
+        // 3. COPY HELPER
+        // =========================================================
+        window.copyText = function(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const text = el.value !== undefined ? el.value : el.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.currentTarget;
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+                btn.style.color = '#00e676';
+                btn.style.borderColor = '#00e676';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }, 1500);
+            });
+        };
+
+        // =========================================================
+        // 4. EXTERNAL LOGIC
+        // =========================================================
+        const START_ANCHOR = ['FF', 'FF', 'FF', 'FF'];
+        const MID_REQUIRED = 3;
+
+        function readPatternsFromText(text) {
+            let blocks = text.split(/\n\s*\n/).filter(b => b.trim() !== '');
+            if (blocks.length === 1) {
+                blocks = text.split('\n').filter(b => b.trim() !== '');
+            }
+            return blocks.map(b => b.trim().split(/\s+/)).filter(p => p.length > 0);
+        }
+        function findNext(pattern, token, fromIdx) {
+            const n = token.length;
+            for (let i = fromIdx; i <= pattern.length - n; i++) {
+                if (token.every((t, j) => pattern[i + j] === t)) return i + n;
+            }
+            return null;
+        }
+        function sanitizeByte(v) {
+            if (v == null) return null;
+            const s = v.trim().toUpperCase();
+            if (!/^[0-9A-F]{1,2}$/.test(s)) return null;
+            return s.padStart(2, '0');
+        }
+        function getEndAnchor(a, b) {
+            const x = sanitizeByte(a ? a.value : ''), y = sanitizeByte(b ? b.value : '');
+            return (x && y) ? [x, y] : null;
+        }
+        function isValidPattern(p, END) {
+            const s = findNext(p, START_ANCHOR, 0);
+            if (s === null) return { ok: false, slice: null };
+            let cur = s;
+            for (let k = 0; k < MID_REQUIRED; k++) {
+                const n = findNext(p, START_ANCHOR, cur);
+                if (n === null) return { ok: false, slice: null };
+                cur = n;
+            }
+            const e = findNext(p, END, cur);
+            if (e === null || e <= s) return { ok: false, slice: null };
+            return { ok: true, slice: p.slice(s, e) };
+        }
+        function buildGenericFromValidated(patterns, END) {
+            const slices = patterns.map(p => isValidPattern(p, END)).filter(r => r.ok).map(r => r.slice);
+            if (!slices.length) return { generic: null, error: "No valid patterns found." };
+            const maxLen = Math.max(...slices.map(s => s.length));
+            const generic = [];
+            for (let i = 0; i < maxLen; i++) {
+                const col = slices.map(s => i < s.length ? s[i] : undefined);
+                if (col.some(v => v === undefined)) { generic.push('??'); continue; }
+                const first = col[0];
+                generic.push(col.every(v => v === first) && (first === '00' || first === 'FF') ? first : '??');
+            }
+            if (generic.length >= 2) { generic[generic.length - 2] = END[0]; generic[generic.length - 1] = END[1]; }
+            return { generic, error: null };
+        }
+        function mergeGenericPatterns(patterns, END) {
+            if (!patterns.length) return { merged: null, error: "No generic patterns found." };
+            const maxLen = Math.max(...patterns.map(p => p.length));
+            const merged = [];
+            for (let i = 0; i < maxLen; i++) {
+                const col = patterns.map(p => i < p.length ? p[i] : undefined);
+                if (col.some(v => v === undefined || v === '??')) { merged.push('??'); continue; }
+                const first = col[0];
+                merged.push(col.every(v => v === first) ? first : '??');
+            }
+            if (merged.length >= 2) { merged[merged.length - 2] = END[0]; merged[merged.length - 1] = END[1]; }
+            return { merged, error: null };
+        }
+        function findNthStartAnchor(tokens, n) {
+            let count = 0, i = 0;
+            while (i <= tokens.length - START_ANCHOR.length) {
+                let m = true;
+                for (let j = 0; j < START_ANCHOR.length; j++) { if (tokens[i + j] !== START_ANCHOR[j]) { m = false; break; } }
+                if (m) { count++; if (count === n) return i; i += START_ANCHOR.length; } else { i++; }
+            }
+            return -1;
+        }
+        
+        function renderPatternBox(el, label, tokens) {
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">`;
+            html += `<span style="color:#00e676; font-family:var(--font-ui); font-weight:700; text-transform:uppercase;">✅ ${label} Complete</span>`;
+            html += `<button class="copy-icon-btn" onclick="const t = Array.from(document.querySelectorAll('#${el.id} .pattern-byte')).map(b => b.innerText).join(' '); navigator.clipboard.writeText(t); this.style.color='#00e676'; this.style.borderColor='#00e676'; setTimeout(()=>{this.style.color='';this.style.borderColor='';}, 1500);"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>`;
+            html += `</div>`;
+            
+            const idx = findNthStartAnchor(tokens, 4);
+            html += `<div class="pattern-line">`;
+            tokens.forEach((t, i) => {
+                let cls = 'pattern-byte';
+                if (t === '??') cls += ' wildcard';
+                else if (idx !== -1 && i >= idx) cls += ' yellow';
+                html += `<span class="${cls}">${t}</span>`;
+            });
+            html += `</div>`;
+            
+            el.innerHTML = html;
+        }
+
+        const oc = {
+            genericPattern: document.getElementById('extGenericPattern'), customPattern: document.getElementById('extCustomPattern'),
+            offA: document.getElementById('extOffA'), readValue: document.getElementById('extReadValue'), writeValue: document.getElementById('extWriteValue'),
+            genericLenDisplay: document.getElementById('extGenericLenDisplay'), customLenDisplay: document.getElementById('extCustomLenDisplay'),
+            resGeneric: document.getElementById('extResGeneric'), resCustom: document.getElementById('extResCustom'),
+            resBase: document.getElementById('extResBase'), resReadHex: document.getElementById('extResReadHex'), resWriteHex: document.getElementById('extResWriteHex'),
+            resReadDec: document.getElementById('extResReadDec'), resWriteDec: document.getElementById('extResWriteDec'),
+            resBaseFormula: document.getElementById('extResBaseFormula'), resReadFormula: document.getElementById('extResReadFormula'), resWriteFormula: document.getElementById('extResWriteFormula'),
+            warning: document.getElementById('extWarning')
+        };
+
+        function ocCountBytes(text) {
+            if (!text || !text.trim()) return 0;
+            let count = 0;
+            for (const part of text.trim().split(/\s+/)) {
+                if (part === '??') count++;
+                else if (/^[0-9A-Fa-f]{2}$/.test(part)) count++;
+                else if (/^[0-9A-Fa-f]+$/.test(part) && part.length > 2) { for (let i = 0; i + 1 < part.length; i += 2) count++; }
+            }
+            return count;
+        }
+        function ocGetGenericLength(text) {
+            if (!text || !text.trim()) return 0;
+            const t = text.trim();
+            if (/^\d+$/.test(t)) return parseInt(t, 10);
+            if (/^0x[0-9A-Fa-f]+$/.test(t)) return parseInt(t, 16);
+            return ocCountBytes(t);
+        }
+        function ocDeriveReadWrite() {
+            const raw = oc.offA.value.trim();
+            let readNum = NaN, writeNum = NaN;
+            if (/^0x[0-9a-f]+$/i.test(raw)) {
+                const offset = Number(raw);
+                if (Number.isSafeInteger(offset) && offset >= 0x2F0) { readNum = Math.floor(offset / 0x10) + 0x6E; writeNum = readNum - 0x04; }
+            }
+            if (!isNaN(readNum) && !isNaN(writeNum)) {
+                oc.readValue.textContent = '0x' + readNum.toString(16).toUpperCase(); oc.writeValue.textContent = '0x' + writeNum.toString(16).toUpperCase();
+                oc.readValue.classList.remove('invalid'); oc.writeValue.classList.remove('invalid');
+            } else {
+                oc.readValue.textContent = 'Invalid'; oc.writeValue.textContent = 'Invalid';
+                oc.readValue.classList.add('invalid'); oc.writeValue.classList.add('invalid');
+            }
+            return { readNum, writeNum };
+        }
+        const ocToHex = num => '0x' + num.toString(16).toUpperCase();
+        function ocUpdateLengths() {
+            oc.genericLenDisplay.textContent = `Generic length: ${ocGetGenericLength(oc.genericPattern.value)} bytes`;
+            oc.customLenDisplay.textContent = `Pattern length: ${ocCountBytes(oc.customPattern.value)} bytes`;
+        }
+        function ocResetResults() {
+            oc.resBase.textContent = '—'; oc.resReadHex.textContent = '—'; oc.resWriteHex.textContent = '—'; oc.resReadDec.textContent = '—'; oc.resWriteDec.textContent = '—';
+            oc.resBaseFormula.textContent = 'Generic − Custom'; oc.resReadFormula.textContent = 'Base + Read'; oc.resWriteFormula.textContent = 'Base + Write';
+        }
+        function ocCalculate() {
+            oc.warning.style.display = 'none';
+            const gLen = ocGetGenericLength(oc.genericPattern.value), cLen = ocCountBytes(oc.customPattern.value), { readNum, writeNum } = ocDeriveReadWrite();
+            oc.resGeneric.textContent = gLen > 0 ? gLen : '—'; oc.resCustom.textContent = cLen > 0 ? cLen : '—';
+            if (gLen <= 0) { oc.warning.textContent = '⚠️ Generic Pattern length is 0. Run Method 1 first.'; oc.warning.style.display = 'block'; ocResetResults(); return; }
+            if (cLen <= 0) { oc.warning.textContent = '⚠️ Custom Pattern is empty or invalid.'; oc.warning.style.display = 'block'; ocResetResults(); return; }
+            if (isNaN(readNum) || isNaN(writeNum)) { oc.warning.textContent = '⚠️ offA is invalid. Must be 0xHEX ≥ 0x2F0 (e.g. 0x4E8).'; oc.warning.style.display = 'block'; ocResetResults(); return; }
+            const base = gLen - cLen, readFinal = base + readNum, writeFinal = base + writeNum;
+            oc.resBase.textContent = base; oc.resBaseFormula.textContent = `${gLen} − ${cLen} = ${base}`;
+            oc.resReadHex.textContent = ocToHex(readFinal); oc.resReadFormula.textContent = `${base} + ${readNum} = ${readFinal}`;
+            oc.resWriteHex.textContent = ocToHex(writeFinal); oc.resWriteFormula.textContent = `${base} + ${writeNum} = ${writeFinal}`;
+            oc.resReadDec.textContent = readFinal; oc.resWriteDec.textContent = writeFinal;
+        }
+
+        document.getElementById('extCalcBtn').addEventListener('click', ocCalculate);
+        oc.genericPattern.addEventListener('input', ocUpdateLengths); oc.customPattern.addEventListener('input', ocUpdateLengths);
+        oc.offA.addEventListener('input', () => { ocDeriveReadWrite(); if (oc.genericPattern.value.trim() && oc.customPattern.value.trim()) ocCalculate(); });
+        ocUpdateLengths(); ocDeriveReadWrite();
+
+        document.querySelectorAll('.ext-hex-input').forEach(inp => { inp.addEventListener('input', () => { inp.value = inp.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase().slice(0, 2); }); });
+
+        // =========================================================
+        // 5. SIDEBAR UPLOAD
+        // =========================================================
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleNewFile(e.target.files[0]);
+            fileInput.value = '';
+        });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--red-primary)'; });
+        dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault(); dropZone.style.borderColor = '';
+            if (e.dataTransfer.files.length > 0) handleNewFile(e.dataTransfer.files[0]);
+        });
+
+        function handleNewFile(file) {
+            statusEl.className = 'status-bar show';
+            statusEl.textContent = `⏳ Reading ${file.name}...`;
+
+            fileListContainer.innerHTML = `
+                <div class="file-item active">
+                    <div class="status-dot"></div>
+                    <div class="file-icon"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2.5L18.5 9H13V4.5zM6 20V4h5v7h7v9H6z"/></svg></div>
+                    <div class="file-details"><div class="file-name">${file.name}</div><div class="file-size">${(file.size / 1024).toFixed(1)} KB</div></div>
+                </div>
+            `;
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    currentFileText = ev.target.result;
+                    
+                    const END1 = getEndAnchor(document.getElementById('extEndByte1A'), document.getElementById('extEndByte1B'));
+                    const END2 = getEndAnchor(document.getElementById('extEndByte2A'), document.getElementById('extEndByte2B'));
+
+                    if (!END1 || !END2) {
+                        statusEl.textContent = `❌ End anchor must be 2 valid hex bytes.`;
+                        return;
                     }
-                }, 100);
-            }
 
-            function resetAll() {
-                patterns = [];
-                skippedPatterns = 0;
-                fileLoaded = false;
-                filename = '';
-                fileInput.value = '';
-                currentPattern = '';
-                totalPatternLength = 0;
-                hasGenericPattern = false;
-                updateStatus();
-                clearResults();
-                warningBox.style.display = 'none';
-                infoBox.style.display = 'none';
-                successBox.style.display = 'none';
-                maskDisplay.textContent = 'Waiting for patterns…';
-                maskDisplay.style.color = '#6e7b9e';
-                spinner.classList.remove('active');
-                copyBtn.style.display = 'none';
-                
-                // Reset offset inputs
-                readOffsetInput.value = '0xB8';
-                writeOffsetInput.value = '0xB4';
-                customPattern.value = '';
-                patternLengthDisplay.textContent = 'Pattern length: 0 bytes';
-                readOffsetDisplay.textContent = 'Hex: 0xB8';
-                writeOffsetDisplay.textContent = 'Hex: 0xB4';
-                genericLengthDisplay.textContent = '0';
-                offsetInfoMessage.style.display = 'block';
-                offsetInfoMessage.innerHTML = '✅ Generic Pattern loaded: <span id="genericLengthDisplay">0</span> bytes';
-                
-                // Reset toggles to HEX
-                readToggleBtns.forEach(b => b.classList.remove('active'));
-                document.querySelector('#readToggle button[data-value="hex"]').classList.add('active');
-                writeToggleBtns.forEach(b => b.classList.remove('active'));
-                document.querySelector('#writeToggle button[data-value="hex"]').classList.add('active');
-                readMode = 'hex';
-                writeMode = 'hex';
-            }
+                    let pats = readPatternsFromText(currentFileText);
+                    if (!pats.length) {
+                        document.getElementById('extOutput1').innerHTML = `<span style="color:var(--red-primary);">❌ File is empty or invalid.</span>`;
+                        document.getElementById('extOutput2').innerHTML = `<span style="color:var(--red-primary);">❌ File is empty or invalid.</span>`;
+                        statusEl.textContent = `❌ No valid lines found.`;
+                        return;
+                    }
 
-            // Event Listeners
-            dropZone.addEventListener('click', () => fileInput.click());
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    processFile(e.target.files[0]);
-                }
-            });
-
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = '#7a8bc7';
-                dropZone.style.background = '#1f2638';
-            });
-
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.style.borderColor = '#2f364b';
-                dropZone.style.background = '#12161e';
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = '#2f364b';
-                dropZone.style.background = '#12161e';
-
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    const file = files[0];
-                    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-                        processFile(file);
+                    // --- Method 1 ---
+                    const res1 = buildGenericFromValidated(pats, END1);
+                    const out1 = document.getElementById('extOutput1');
+                    if (res1.error) {
+                        out1.innerHTML = `<span style="color:var(--red-primary);">❌ ${res1.error}</span>`;
                     } else {
-                        alert('Please upload a .txt file.');
+                        const fullGeneric = [...START_ANCHOR, ...res1.generic];
+                        renderPatternBox(out1, 'Method 1', fullGeneric);
+                        
+                        oc.genericPattern.value = fullGeneric.join(' ');
+                        const idx = findNthStartAnchor(fullGeneric, 4);
+                        oc.customPattern.value = idx === -1 ? fullGeneric.join(' ') : fullGeneric.slice(idx).join(' ');
+                        ocUpdateLengths(); ocDeriveReadWrite(); ocCalculate();
                     }
+
+                    // --- Method 2 ---
+                    const res2 = mergeGenericPatterns(pats, END2);
+                    const out2 = document.getElementById('extOutput2');
+                    if (res2.error) {
+                        out2.innerHTML = `<span style="color:var(--red-primary);">❌ ${res2.error}</span>`;
+                    } else {
+                        renderPatternBox(out2, 'Method 2', res2.merged);
+                    }
+
+                    statusEl.className = 'status-bar show success';
+                    statusEl.textContent = `✅ Processed: ${file.name}`;
+
+                } catch (err) {
+                    console.error(err);
+                    statusEl.textContent = `❌ Error: ${err.message}`;
                 }
-            });
+            };
+            reader.readAsText(file);
+        }
 
-            analyzeBtn.addEventListener('click', runAnalysis);
-            clearBtn.addEventListener('click', resetAll);
-
-            // Copy button
-            copyBtn.addEventListener('click', function() {
-                copyToClipboard(currentPattern);
-            });
-
-            // Initial state
-            resetAll();
-        })();
+    })();
     </script>
-
 </body>
 </html>
